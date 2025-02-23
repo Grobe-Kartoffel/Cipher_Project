@@ -1,0 +1,23 @@
+Raylib Supports Drag and Drop
+- This appears to only provide me with the file path
+- File path is all I need to access a file
+
+- bool IsFileDropped(void); // tells us if a file was dropped
+- FilePathList LoadDroppedFiles(void); // loads dropped file paths into a list
+- void UnloadDroppedFiles(FilePathList files); // unload file paths
+
+- char *LoadFileText(const char *filename); // load text data from file (read), returns a '/0' terminated string
+- void UnloadFileText(char *text); // unload file text data allocated by LoadFileText()
+- bool SaveFileText(const char *filename, char *text); // save text data to file (write), string must be '/0' terminated, returns true on success
+
+
+Raylib supports clipboard functionality
+- User can copy and paste text into program
+- User can copy and paste text out of program
+
+- void SetClipboardText(const char *text); //set clipboard text content
+- const char *GetClipboardText(void); // get clipboard text content
+
+This program will require multi-threading
+Raylib supports mutli-threading
+* Look into later
