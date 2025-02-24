@@ -13,6 +13,8 @@ void *textInput(void *vargp){
     char key;
     const char *pText;
     int fKey;
+    double time = -1.0;
+    bool holdBack = false;
     bool canCopy = true;
     bool canPaste = true;
 	while(!WindowShouldClose()){
@@ -20,7 +22,6 @@ void *textInput(void *vargp){
         if(canCopy && (IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)) && IsKeyDown(KEY_C)){
             SetClipboardText(&TEXT);
             canCopy = false;
-            hasCopied = true;
             continue;
         }
         // paste
@@ -49,6 +50,29 @@ void *textInput(void *vargp){
             canCopy = true;
             canPaste = true;
         }
+        // backspace
+        if(IsKeyDown(KEY_BACKSPACE) && TEXTSIZE>0 && GetTime()>(time+(holdBack?1.0/30.0:1.0/2.0) ) ){
+            TEXT[TEXTSIZE-1] = '\0';
+            TEXTSIZE--;
+            if(time>0) // time is less than zero before first press
+                holdBack = true;
+            time = GetTime();
+            continue;
+        }
+        // reset backspace
+        if(!IsKeyDown(KEY_BACKSPACE)){
+            holdBack = false;
+            time = -1.0;
+        }
+        // delete
+        fKey = GetKeyPressed();
+        if(fKey==KEY_DELETE){
+            for(int i = 0; i<TEXTCAP; i++){
+                    TEXT[i] = '\0';
+                }
+            TEXTSIZE = 0;
+            continue;
+        }
         // type
         key = (char)GetCharPressed();
         if(key!='\0'){
@@ -61,19 +85,9 @@ void *textInput(void *vargp){
                 }
             }
         }
-        // delete
-        fKey = GetKeyPressed();
-        if(fKey==KEY_DELETE || fKey==KEY_BACKSPACE){
-            for(int i = 0; i<TEXTCAP; i++){
-                    TEXT[i] = '\0';
-                }
-            TEXTSIZE = 0;
-        }
     }
 	return NULL;
 }
-
-//
 
 int main(void){
     // initialize window
