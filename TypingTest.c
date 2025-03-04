@@ -98,6 +98,8 @@ int main(void){
     
     // vars
     int txtWidth = 0;
+    int txtSize = 40;
+    SetTextLineSpacing(txtSize); // set vertical spacing // setting it to the font size seems to work generally well
     
     // threads
     pthread_t inputThread;
@@ -118,8 +120,8 @@ int main(void){
         {
             BeginDrawing();
                 ClearBackground(LIGHTGRAY);
-                txtWidth = MeasureText(TEXT,40);
-                DrawText(TEXT, 640-txtWidth/2, 320, 40, DARKGRAY);
+                txtWidth = MeasureText(TEXT,txtSize);
+                DrawText(TEXT,640-txtWidth/2, 320, txtSize, DARKGRAY);
             EndDrawing();
         }
     }

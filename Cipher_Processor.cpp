@@ -5,9 +5,11 @@
 
 #include "raylib.h"
 
+int GLOBALFONTSIZE = 15;
+
 enum Cipher{Vigenere,Ceasar,ZigZag,Spiral};
 enum Operation{Encrypt,Decrypt,Crack,Info};
-enum SelWindow{None,Input,InputFile,OutputFile,V_Key,ExpectedWord};
+enum SelWindow{None,Input,Output,InputFile,OutputFile,V_Key,ExpectedWord};
 struct Graphic{
     Graphic(){
         this->x = 0;
@@ -28,6 +30,269 @@ struct Graphic{
     float w;
     float h;
     Texture2D tex;
+};
+struct TextWindow{
+    TextWindow(){
+        this->text = (char *)malloc(sizeof(char[128]));
+        this->size = 0;
+        this->capacity = 128;
+        this->x = 0;
+        this->y = 0;
+        this->width = 250;
+        this->height = 250;
+    }
+    TextWindow(int cap, int x, int y, int w, int h){
+        this->text = (char *)malloc(sizeof(char[cap]));
+        this->size = 0;
+        this->capacity = cap;
+        this->x = x;
+        this->y = y;
+        this->width = w;
+        this->height = h;
+    }
+    char *text;
+    int size;
+    int capacity;
+    int x;
+    int y;
+    int width;
+    int height;
+    void Clear(){
+        size = 0;
+    }
+    bool InputKey(const char c){
+        if(size!=capacity){
+            text[size] = c;
+            size++;
+            return true;
+        }
+        return false;
+    }
+    int InputString(const char *input){
+        for(int i = 0; i<capacity; i++){ // put a limit on the loop so that inputted text cannot exceed the length of the window
+            if(input[i]=='\0')
+                return (i==0?-1:0); // return fail if no text entered, success if exit by the end of the text
+            if(!InputKey(input[i])){
+                return 1; // input key fails if text must be truncated
+            }
+        }
+        return 1; // if last char was '\0' then loop would have returned 0, therefore the text was truncated if we are here
+    }
+    char * DisplayText(){
+        int dSize = 0;
+        int dCap = capacity*2+1; // large enough for every character to be on its own line
+        char *display = (char *)malloc(sizeof(char[dCap]));
+        for(int i = 0; i<dCap; i++) // clear text
+            display[0] = '\0';
+        
+        int lSize = 0;
+        int lCap = capacity;
+        char *line = (char *)malloc(sizeof(char[capacity]));
+        for(int i = 0; i<lCap; i++) // clear line
+            line[0] = '\0';
+        
+        int wSize = 0;
+        int wCap = capacity;
+        char *word = (char *)malloc(sizeof(char[capacity]));
+        for(int i = 0; i<wCap; i++) // clear word
+            word[0] = '\0';
+        
+        int numLines = 0;
+        char bufferChar;
+        int bufferLength = MeasureText("...",GLOBALFONTSIZE);
+        
+        // abort if window is too small for text
+        if(GLOBALFONTSIZE>height || GLOBALFONTSIZE>width){
+            display[0] = '.';
+            display[1] = '.';
+            display[2] = '.';
+            display[3] = '\0';
+            return display;
+        }
+        
+        for(int i = 0; i<capacity; i++){ // loop through the text
+            // add character to word
+            word[wSize] = text[i];
+            wSize++;
+            // code if we reach the end of the word
+            if(text[i]==' '){
+                // code if it is the last line and word is too long
+                if( ((numLines+1)*GLOBALFONTSIZE)>=height && MeasureText(line,GLOBALFONTSIZE)+MeasureText(word,GLOBALFONTSIZE)+bufferLength>=width){
+                    line[lSize] = '.';
+                    line[lSize+1] = '.';
+                    line[lSize+2] = '.';
+                    line[lSize+3] = '\0';
+                    lSize += 4;
+                    // copy line to display
+                    for(int j = 0; j<lSize; j++){
+                        display[dSize] = line[j];
+                        dSize++;
+                        line[j] = '\0'; // erase the line as we go
+                    }
+                    lSize = 0;
+                    return display;
+                }
+                // code if line would be too long with word
+                if(MeasureText(word,GLOBALFONTSIZE)+MeasureText(line,GLOBALFONTSIZE)>=width){
+                    // copy line to display
+                    for(int j = 0; j<lSize; j++){
+                        display[dSize] = line[j];
+                        dSize++;
+                        line[j] = '\0'; // erase the line as we go
+                    }
+                    display[dSize] = '\n'; // signify end of line
+                    dSize++;
+                    lSize = 0;
+                    // increase lines
+                    numLines++;
+                    // copy word to line
+                    if( ((numLines+1)*GLOBALFONTSIZE)>=height && MeasureText(word,GLOBALFONTSIZE)+bufferLength>=width){ // last line and word is too long
+                        // we can take a shortcut because we know we just added the line to the display
+                        display[dSize] = '.';
+                        display[dSize+1] = '.';
+                        display[dSize+2] = '.';
+                        display[dSize+3] = '\0';
+                        return display;
+                    }
+                    // otherwise, we add the word normally
+                    for(int j = 0; j<wSize; j++){
+                        line[lSize] = word[j];
+                        lSize++;
+                        word[j] = '\0'; // erase the line as we go
+                    }
+                    wSize = 0;
+                }
+                // otherwise word fits on line
+                else{
+                    // copy word to line
+                    for(int j = 0; j<wSize; j++){
+                        line[lSize] = word[j];
+                        lSize++;
+                        word[j] = '\0'; // erase the line as we go
+                    }
+                    wSize = 0;
+                }
+            }
+            // code if the word is too long
+            else if(MeasureText(word,GLOBALFONTSIZE)+bufferLength>=width){
+                // if we are on the last 2 lines, add '...' and return // need more than that to display word
+                if( ((numLines+2)*GLOBALFONTSIZE)>=height){
+                    // finish line
+                    line[lSize] = '.';
+                    line[lSize+1] = '.';
+                    line[lSize+2] = '.';
+                    line[lSize+3] = '\0';
+                    lSize += 4;
+                    // copy line to display
+                    for(int j = 0; j<lSize; j++){
+                        display[dSize] = line[j];
+                        dSize++;
+                        line[j] = '\0'; // erase the line as we go
+                    }
+                    lSize = 0;
+                    return display;
+                }
+                // save last valid character to buffer
+                bufferChar = word[wSize-1];
+                // replace last character with dash
+                word[wSize-1] = '-';
+                // copy line to display
+                if(lSize!=0){
+                    for(int j = 0; j<lSize; j++){
+                        display[dSize] = line[j];
+                        dSize++;
+                        line[j] = '\0'; // erase the line as we go
+                    }
+                    display[dSize] = '\n'; // signify end of line
+                    dSize++;
+                    lSize = 0;
+                    // increase lines
+                    numLines++;
+                }
+                // copy word to line
+                for(int j = 0; j<wSize; j++){
+                    line[lSize] = word[j];
+                    lSize++;
+                    word[j] = '\0'; // erase the line as we go
+                }
+                wSize = 0;
+                // copy line to display
+                for(int j = 0; j<lSize; j++){
+                    display[dSize] = line[j];
+                    dSize++;
+                    line[j] = '\0'; // erase the line as we go
+                }
+                display[dSize] = '\n'; // signify end of line
+                dSize++;
+                lSize = 0;
+                // increase lines
+                numLines++;
+                // add buffer character to word
+                word[0] = bufferChar;
+                // add character to word
+                word[1] = text[i];
+            }
+        }
+        // if we make it here, we found the end of the text and have one last (should be '\0' deliminated) word to add
+        // code if it is the last line and word is too long
+        if( ((numLines+1)*GLOBALFONTSIZE)>=height && MeasureText(line,GLOBALFONTSIZE)+MeasureText(word,GLOBALFONTSIZE)+bufferLength>=width){
+            line[lSize] = '.';
+            line[lSize+1] = '.';
+            line[lSize+2] = '.';
+            line[lSize+3] = '\0';
+            lSize += 4;
+            // copy line to display
+            for(int j = 0; j<lSize; j++){
+                display[dSize] = line[j];
+                dSize++;
+                line[j] = '\0'; // erase the line as we go
+            }
+            lSize = 0;
+            return display;
+        }
+        // code if line would be too long with word
+        if(MeasureText(word,GLOBALFONTSIZE)+MeasureText(line,GLOBALFONTSIZE)>=width){
+            // copy line to display
+            for(int j = 0; j<lSize; j++){
+                display[dSize] = line[j];
+                dSize++;
+                line[j] = '\0'; // erase the line as we go
+            }
+            display[dSize] = '\n'; // signify end of line
+            dSize++;
+            lSize = 0;
+            // increase lines
+            numLines++;
+            // copy word to line
+            if( ((numLines+1)*GLOBALFONTSIZE)>=height && MeasureText(word,GLOBALFONTSIZE)+bufferLength>=width){ // last line and word is too long
+                // we can take a shortcut because we know we just added the line to the display
+                display[dSize] = '.';
+                display[dSize+1] = '.';
+                display[dSize+2] = '.';
+                display[dSize+3] = '\0';
+                return display;
+            }
+            // otherwise, we add the word normally
+            for(int j = 0; j<wSize; j++){
+                line[lSize] = word[j];
+                lSize++;
+                word[j] = '\0'; // erase the line as we go
+            }
+            wSize = 0;
+        }
+        // otherwise word fits on line
+        else{
+            // copy word to line
+            for(int j = 0; j<wSize; j++){
+                line[lSize] = word[j];
+                lSize++;
+                word[j] = '\0'; // erase the line as we go
+            }
+            wSize = 0;
+        }
+        display[dSize] = '\0'; // just in case, somehow, the last character is not '\0'
+        return display;
+    }
 };
 
 int main(void){
@@ -88,14 +353,39 @@ int main(void){
     ButtonState importButton = Enabled;
     ButtonState exportButton = Enabled;
     ButtonState executeButton = Enabled;
-    // put into vigenere struct when possible
+    
+    // put into Vigenere struct when possible
     ButtonState V_alphabetButton = Enabled;
     int V_alphabetMenuOption = 0;
     bool V_alphabetMenu_Open = false;
     int V_alphabetMenu_OpenOption = 2;
     ButtonState *lastPressed = NULL;
     
-    float mx; // mouse coords
+    // text windows
+    TextWindow input(512,60,418,544,240);
+    input.InputString("Test Text... This should be long enough to show how text will be displayed in various windows and appendages.");
+    char *inputText = input.DisplayText();
+    TextWindow output(512,676,418,544,240);
+    output.InputString("Test Text... This should be long enough to show how text will be displayed in various windows and appendages.");
+    char *outputText = output.DisplayText();
+    TextWindow inputFile(256,264,378,220,15);
+    inputFile.InputString("Test Text... This should be long enough to show how text will be displayed in various windows and appendages.");
+    char *inputFileText = inputFile.DisplayText();
+    TextWindow outputFile(256,908,378,192,15);
+    outputFile.InputString("Test Text... This should be long enough to show how text will be displayed in various windows and appendages.");
+    char *outputFileText = outputFile.DisplayText();
+    TextWindow v_Key(128,205,180,190,15);
+    v_Key.InputString("Test Text... This should be long enough to show how text will be displayed in various windows and appendages.");
+    char *v_KeyText = v_Key.DisplayText();
+    TextWindow expectedWord(128,338,136,190,15);
+    expectedWord.InputString("Test Text... This should be long enough to show how text will be displayed in various windows and appendages.");
+    char *expectedWordText = expectedWord.DisplayText();
+    
+    char *displayText = NULL;
+    SetTextLineSpacing(GLOBALFONTSIZE); // set vertical spacing // setting it to the font size seems to work generally well
+    
+    // mouse coords
+    float mx;
     float my;
     
     // running loop
@@ -142,6 +432,26 @@ int main(void){
                 if(mx>=490)
                     operation = Info;
             }
+            selWindow = None;
+            if(mx>=46 && mx<616 && my>=404 && my<684){ // select input window
+                selWindow = Input;
+            }
+            if(mx>=662 && mx<1232 && my>=404 && my<684){ // select output window
+                selWindow = Output;
+            }
+            if(mx>=250 && mx<534 && my>=364 && my<404){ // select inputFile window
+                selWindow = InputFile;
+            }
+            if(mx>=894 && mx<1150 && my>=364 && my<404){ // select outputFile window
+                selWindow = OutputFile;
+            }
+            if(mx>=192 && mx<442 && my>=166 && my<206 && cipher==Vigenere && operation<Crack){ // select V_Key window
+                selWindow = V_Key;
+            }
+            if(mx>=224 && mx<574 && my>=122 && my<162 && operation==Crack){ // select ExpectedWord window
+                selWindow = ExpectedWord;
+            }
+            
             // close alphabet menu on click away
             if(V_alphabetMenu_Open && !(mx>=330 && mx<368 && my>=124 && my<162) && !(mx>=200 && mx<324 && my>=134 && my<212))
                 V_alphabetMenu_Open = false;
@@ -294,8 +604,25 @@ int main(void){
                 }
             }
             
+            // draw text windows
+            DrawText(inputText,input.x,input.y,GLOBALFONTSIZE,(selWindow==Input?BLACK:LIGHTGRAY));
+            DrawText(outputText,output.x,output.y,GLOBALFONTSIZE,(selWindow==Output?BLACK:LIGHTGRAY));
+            DrawText(inputFileText,inputFile.x,inputFile.y,GLOBALFONTSIZE,(selWindow==InputFile?BLACK:LIGHTGRAY));
+            DrawText(outputFileText,outputFile.x,outputFile.y,GLOBALFONTSIZE,(selWindow==OutputFile?BLACK:LIGHTGRAY));
+            if(cipher==Vigenere && operation<Crack)
+                DrawText(v_KeyText,v_Key.x,v_Key.y,GLOBALFONTSIZE,(selWindow==V_Key?BLACK:LIGHTGRAY));
+            if(operation==Crack)
+                DrawText(expectedWordText,expectedWord.x,expectedWord.y,GLOBALFONTSIZE,(selWindow==ExpectedWord?BLACK:LIGHTGRAY));
         EndDrawing();
     }
+    
+    // FREE YOUR VARIABLES YOU IDIOT
+    free(inputText);
+    free(outputText);
+    free(inputFileText);
+    free(outputFileText);
+    free(v_KeyText);
+    free(expectedWordText);
     
     CloseWindow();
     return 0;
