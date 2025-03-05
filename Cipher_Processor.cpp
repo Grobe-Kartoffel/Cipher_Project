@@ -78,10 +78,10 @@ struct TextWindow{
         }
         return 1; // if last char was '\0' then loop would have returned 0, therefore the text was truncated if we are here
     }
-    char * DisplayText(){
+    void DisplayText(char **displayText){
         int dSize = 0;
         int dCap = capacity*2+1; // large enough for every character to be on its own line
-        char *display = (char *)malloc(sizeof(char[dCap]));
+        char *display = *displayText;
         for(int i = 0; i<dCap; i++) // clear text
             display[i] = '\0';
         
@@ -107,7 +107,9 @@ struct TextWindow{
             display[1] = '.';
             display[2] = '.';
             display[3] = '\0';
-            return display;
+            free(line);
+            free(word);
+            return;
         }
         
         for(int i = 0; i<capacity; i++){ // loop through the text
@@ -130,7 +132,10 @@ struct TextWindow{
                         line[j] = '\0'; // erase the line as we go
                     }
                     lSize = 0;
-                    return display;
+                    free(line);
+                    free(word);
+                    display[dSize] = '\0';
+                    return;
                 }
                 // code if line would be too long with word
                 if(MeasureText(word,GLOBALFONTSIZE)+MeasureText(line,GLOBALFONTSIZE)>=width){
@@ -152,7 +157,9 @@ struct TextWindow{
                         display[dSize+1] = '.';
                         display[dSize+2] = '.';
                         display[dSize+3] = '\0';
-                        return display;
+                        free(line);
+                        free(word);
+                        return;
                     }
                     // otherwise, we add the word normally
                     for(int j = 0; j<wSize; j++){
@@ -190,7 +197,10 @@ struct TextWindow{
                         line[j] = '\0'; // erase the line as we go
                     }
                     lSize = 0;
-                    return display;
+                    free(line);
+                    free(word);
+                    display[dSize] = '\0';
+                    return;
                 }
                 // save last valid character to buffer
                 bufferChar = word[wSize-1];
@@ -233,7 +243,7 @@ struct TextWindow{
                 word[1] = text[i];
             }
         }
-        // if we make it here, we found the end of the text and have one last (should be '\0' deliminated) word to add
+        // if we make it here, we found the end of the text and have one last (should be '\0' terminated) word to add
         // code if it is the last line and word is too long
         if( ((numLines+1)*GLOBALFONTSIZE)>=height && MeasureText(line,GLOBALFONTSIZE)+MeasureText(word,GLOBALFONTSIZE)+bufferLength>=width){
             line[lSize] = '.';
@@ -248,7 +258,10 @@ struct TextWindow{
                 line[j] = '\0'; // erase the line as we go
             }
             lSize = 0;
-            return display;
+            free(line);
+            free(word);
+            display[dSize] = '\0';
+            return;
         }
         // code if line would be too long with word
         if(MeasureText(word,GLOBALFONTSIZE)+MeasureText(line,GLOBALFONTSIZE)>=width){
@@ -270,7 +283,10 @@ struct TextWindow{
                 display[dSize+1] = '.';
                 display[dSize+2] = '.';
                 display[dSize+3] = '\0';
-                return display;
+                free(line);
+                free(word);
+                display[dSize] = '\0';
+                return;
             }
             // otherwise, we add the word to the display
             for(int j = 0; j<wSize; j++){
@@ -280,7 +296,10 @@ struct TextWindow{
             }
             wSize = 0;
             display[dSize] = '\0';
-            return display;
+            free(line);
+            free(word);
+            display[dSize] = '\0';
+            return;
         }
         // otherwise word fits on line
         // copy word to line
@@ -298,7 +317,9 @@ struct TextWindow{
         }
         lSize = 0;
         display[dSize] = '\0'; // just in case, somehow, the last character is not '\0'
-        return display;
+        free(line);
+        free(word);
+        return;
     }
 };
 
@@ -369,29 +390,36 @@ int main(void){
     ButtonState *lastPressed = NULL;
     
     // text windows
+    TextWindow input(512,60,418,544,240);
+    input.InputString("Test Text... This should be long enough to show how text will be displayed in various windows and appendages.");
+    char *inputText = (char *)malloc(sizeof(char[input.capacity*2+1]));
+    input.DisplayText(&inputText);
     
     TextWindow output(512,676,418,544,240);
     output.InputString("Test Text... This should be long enough to show how text will be displayed in various windows and appendages.");
-    char *outputText = output.DisplayText();
-    
-    TextWindow input(512,60,418,544,240);
-    input.InputString("Test Text... This should be long enough to show how text will be displayed in various windows and appendages.");
-    char *inputText = input.DisplayText();
+    char *outputText = (char *)malloc(sizeof(char[output.capacity*2+1]));
+    output.DisplayText(&outputText);
     
     TextWindow inputFile(256,264,378,220,15);
     inputFile.InputString("Test Text... This should be long enough to show how text will be displayed in various windows and appendages.");
-    char *inputFileText = inputFile.DisplayText();
+    char *inputFileText = (char *)malloc(sizeof(char[inputFile.capacity*2+1]));
+    inputFile.DisplayText(&inputFileText);
+    
     TextWindow outputFile(256,908,378,192,15);
     outputFile.InputString("Test Text... This should be long enough to show how text will be displayed in various windows and appendages.");
-    char *outputFileText = outputFile.DisplayText();
+    char *outputFileText = (char *)malloc(sizeof(char[outputFile.capacity*2+1]));
+    outputFile.DisplayText(&outputFileText);
+    
     TextWindow v_Key(128,205,180,190,15);
     v_Key.InputString("Test Text... This should be long enough to show how text will be displayed in various windows and appendages.");
-    char *v_KeyText = v_Key.DisplayText();
+    char *v_KeyText = (char *)malloc(sizeof(char[v_Key.capacity*2+1]));
+    v_Key.DisplayText(&v_KeyText);
+    
     TextWindow expectedWord(128,338,136,190,15);
     expectedWord.InputString("Test Text... This should be long enough to show how text will be displayed in various windows and appendages.");
-    char *expectedWordText = expectedWord.DisplayText();
+    char *expectedWordText = (char *)malloc(sizeof(char[expectedWord.capacity*2+1]));
+    expectedWord.DisplayText(&expectedWordText);
     
-    char *displayText = NULL;
     SetTextLineSpacing(GLOBALFONTSIZE); // set vertical spacing // setting it to the font size seems to work generally well
     
     // mouse coords
