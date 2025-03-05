@@ -10,6 +10,7 @@ int GLOBALFONTSIZE = 15;
 enum Cipher{Vigenere,Ceasar,ZigZag,Spiral};
 enum Operation{Encrypt,Decrypt,Crack,Info};
 enum SelWindow{None,Input,Output,InputFile,OutputFile,V_Key,ExpectedWord};
+
 struct Graphic{
     Graphic(){
         this->x = 0;
@@ -40,6 +41,7 @@ struct TextWindow{
         this->y = 0;
         this->width = 250;
         this->height = 250;
+        this->textChanged = false;
     }
     TextWindow(int cap, int x, int y, int w, int h){
         this->text = (char *)malloc(sizeof(char[cap]));
@@ -49,6 +51,7 @@ struct TextWindow{
         this->y = y;
         this->width = w;
         this->height = h;
+        this->textChanged = false;
     }
     char *text;
     int size;
@@ -57,6 +60,7 @@ struct TextWindow{
     int y;
     int width;
     int height;
+    bool textChanged;
     void Clear(){
         size = 0;
     }
@@ -323,6 +327,97 @@ struct TextWindow{
     }
 };
 
+struct t_ThreadArgs{
+    SelWindow *selWindow;
+    TextWindow *windows[7];
+};
+void *textInput(void *input){
+    char key;
+    const char *pText;
+    int fKey;
+    double time = -1.0;
+    bool holdBack = false;
+    bool canCopy = true;
+    bool canPaste = true;
+    
+    TextWindow *window = NULL;
+    // CLEAR ALL TEXT WINDOWS
+    for(int i = 1; i<7; i++){
+        window = ((t_ThreadArgs *)input)->windows[i];
+        for(int j = 0; j<window->capacity; j++){
+            window->text[j] = '\0';
+        }
+        window->size = 0;
+        window->textChanged = true;
+    }
+    
+	while(!WindowShouldClose()){
+        if( *( ((t_ThreadArgs *)input)->selWindow)==None )
+            continue;
+        window = ((t_ThreadArgs *)input)->windows[*( ((t_ThreadArgs *)input)->selWindow)];
+        // copy
+        if(canCopy && (IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)) && IsKeyDown(KEY_C)){
+            SetClipboardText(window->text);
+            canCopy = false;
+            continue;
+        }
+        // paste
+        if(canPaste && (IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)) && IsKeyDown(KEY_V)){
+            pText = GetClipboardText();
+            while(*pText!='\0' && window->size<window->capacity){
+                if(*pText=='\r' || *pText=='\n'){
+                    pText++;
+                    continue;
+                }
+                window->text[window->size] = (*pText=='\t'?' ':*pText);
+                window->size++;
+                pText++;
+            }
+            canPaste = false;
+            window->textChanged = true;
+            continue;
+        }
+        // reset copy/paste // if(not copying and not pasting)
+        if(!( (IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)) && IsKeyDown(KEY_C) ) && !( (IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)) && IsKeyDown(KEY_V) )){
+            canCopy = true;
+            canPaste = true;
+        }
+        // backspace
+        if(IsKeyDown(KEY_BACKSPACE) && window->size>0 && GetTime()>(time+(holdBack?1.0/30.0:1.0/2.0) ) ){
+            window->text[window->size-1] = '\0';
+            window->size--;
+            if(time>0) // time is less than zero before first press
+                holdBack = true;
+            time = GetTime();
+            window->textChanged = true;
+            continue;
+        }
+        // reset backspace
+        if(!IsKeyDown(KEY_BACKSPACE)){
+            holdBack = false;
+            time = -1.0;
+        }
+        // delete
+        fKey = GetKeyPressed();
+        if(fKey==KEY_DELETE){
+            for(int i = 0; i<window->capacity; i++){
+                window->text[i] = '\0';
+            }
+            window->size = 0;
+            window->textChanged = true;
+            continue;
+        }
+        // type
+        key = (char)GetCharPressed();
+        if(key!='\0' && window->size<window->capacity){
+            window->text[window->size] = key;
+            window->size++;
+            window->textChanged = true;
+        }
+    }
+	return NULL;
+}
+
 int main(void){
     
     // Initialize
@@ -391,32 +486,26 @@ int main(void){
     
     // text windows
     TextWindow input(512,60,418,544,240);
-    input.InputString("Test Text... This should be long enough to show how text will be displayed in various windows and appendages.");
     char *inputText = (char *)malloc(sizeof(char[input.capacity*2+1]));
-    input.DisplayText(&inputText);
+    
     
     TextWindow output(512,676,418,544,240);
-    output.InputString("Test Text... This should be long enough to show how text will be displayed in various windows and appendages.");
     char *outputText = (char *)malloc(sizeof(char[output.capacity*2+1]));
     output.DisplayText(&outputText);
     
     TextWindow inputFile(256,264,378,220,15);
-    inputFile.InputString("Test Text... This should be long enough to show how text will be displayed in various windows and appendages.");
     char *inputFileText = (char *)malloc(sizeof(char[inputFile.capacity*2+1]));
     inputFile.DisplayText(&inputFileText);
     
     TextWindow outputFile(256,908,378,192,15);
-    outputFile.InputString("Test Text... This should be long enough to show how text will be displayed in various windows and appendages.");
     char *outputFileText = (char *)malloc(sizeof(char[outputFile.capacity*2+1]));
     outputFile.DisplayText(&outputFileText);
     
     TextWindow v_Key(128,205,180,190,15);
-    v_Key.InputString("Test Text... This should be long enough to show how text will be displayed in various windows and appendages.");
     char *v_KeyText = (char *)malloc(sizeof(char[v_Key.capacity*2+1]));
     v_Key.DisplayText(&v_KeyText);
     
     TextWindow expectedWord(128,338,136,190,15);
-    expectedWord.InputString("Test Text... This should be long enough to show how text will be displayed in various windows and appendages.");
     char *expectedWordText = (char *)malloc(sizeof(char[expectedWord.capacity*2+1]));
     expectedWord.DisplayText(&expectedWordText);
     
@@ -425,6 +514,19 @@ int main(void){
     // mouse coords
     float mx;
     float my;
+    
+    // threads
+    t_ThreadArgs tArgs;
+    tArgs.selWindow = &selWindow;
+    tArgs.windows[0] = NULL;
+    tArgs.windows[1] = &input;
+    tArgs.windows[2] = &output;
+    tArgs.windows[3] = &inputFile;
+    tArgs.windows[4] = &outputFile;
+    tArgs.windows[5] = &v_Key;
+    tArgs.windows[6] = &expectedWord;
+    pthread_t inputThread;
+    pthread_create(&inputThread,NULL,textInput,&tArgs);
     
     // running loop
     while(!WindowShouldClose()){
@@ -643,18 +745,53 @@ int main(void){
             }
             
             // draw text windows
+            if(input.textChanged){
+                input.DisplayText(&inputText);
+                input.textChanged = false;
+            }
             DrawText(inputText,input.x,input.y,GLOBALFONTSIZE,(selWindow==Input?BLACK:LIGHTGRAY));
+            
+            if(output.textChanged){
+                output.DisplayText(&outputText);
+                output.textChanged = false;
+            }
             DrawText(outputText,output.x,output.y,GLOBALFONTSIZE,(selWindow==Output?BLACK:LIGHTGRAY));
+            
+            if(inputFile.textChanged){
+                inputFile.DisplayText(&inputFileText);
+                inputFile.textChanged = false;
+            }
             DrawText(inputFileText,inputFile.x,inputFile.y,GLOBALFONTSIZE,(selWindow==InputFile?BLACK:LIGHTGRAY));
+            
+            if(outputFile.textChanged){
+                outputFile.DisplayText(&outputFileText);
+                outputFile.textChanged = false;
+            }
             DrawText(outputFileText,outputFile.x,outputFile.y,GLOBALFONTSIZE,(selWindow==OutputFile?BLACK:LIGHTGRAY));
-            if(cipher==Vigenere && operation<Crack)
+            
+            if(cipher==Vigenere && operation<Crack){
+                if(v_Key.textChanged){
+                    v_Key.DisplayText(&v_KeyText);
+                    v_Key.textChanged = false;
+                }
                 DrawText(v_KeyText,v_Key.x,v_Key.y,GLOBALFONTSIZE,(selWindow==V_Key?BLACK:LIGHTGRAY));
-            if(operation==Crack)
+            }
+            
+            if(operation==Crack){
+                if(expectedWord.textChanged){
+                    expectedWord.DisplayText(&expectedWordText);
+                    expectedWord.textChanged = false;
+                }
                 DrawText(expectedWordText,expectedWord.x,expectedWord.y,GLOBALFONTSIZE,(selWindow==ExpectedWord?BLACK:LIGHTGRAY));
+            }
+            
         EndDrawing();
     }
     
-    // FREE YOUR VARIABLES YOU IDIOT
+    // JOIN YOUR THREADS
+    pthread_join(inputThread,NULL);
+    
+    // FREE YOUR VARIABLES
     free(inputText);
     free(outputText);
     free(inputFileText);
