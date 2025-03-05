@@ -83,19 +83,19 @@ struct TextWindow{
         int dCap = capacity*2+1; // large enough for every character to be on its own line
         char *display = (char *)malloc(sizeof(char[dCap]));
         for(int i = 0; i<dCap; i++) // clear text
-            display[0] = '\0';
+            display[i] = '\0';
         
         int lSize = 0;
         int lCap = capacity;
         char *line = (char *)malloc(sizeof(char[capacity]));
         for(int i = 0; i<lCap; i++) // clear line
-            line[0] = '\0';
+            line[i] = '\0';
         
         int wSize = 0;
         int wCap = capacity;
         char *word = (char *)malloc(sizeof(char[capacity]));
         for(int i = 0; i<wCap; i++) // clear word
-            word[0] = '\0';
+            word[i] = '\0';
         
         int numLines = 0;
         char bufferChar;
@@ -272,24 +272,31 @@ struct TextWindow{
                 display[dSize+3] = '\0';
                 return display;
             }
-            // otherwise, we add the word normally
+            // otherwise, we add the word to the display
             for(int j = 0; j<wSize; j++){
-                line[lSize] = word[j];
-                lSize++;
+                display[dSize] = word[j];
+                dSize++;
                 word[j] = '\0'; // erase the line as we go
             }
             wSize = 0;
+            display[dSize] = '\0';
+            return display;
         }
         // otherwise word fits on line
-        else{
-            // copy word to line
-            for(int j = 0; j<wSize; j++){
-                line[lSize] = word[j];
-                lSize++;
-                word[j] = '\0'; // erase the line as we go
-            }
-            wSize = 0;
+        // copy word to line
+        for(int j = 0; j<wSize; j++){
+            line[lSize] = word[j];
+            lSize++;
+            word[j] = '\0'; // erase the line as we go
         }
+        wSize = 0;
+        // copy line to display
+        for(int j = 0; j<lSize; j++){
+            display[dSize] = line[j];
+            dSize++;
+            line[j] = '\0'; // erase the line as we go
+        }
+        lSize = 0;
         display[dSize] = '\0'; // just in case, somehow, the last character is not '\0'
         return display;
     }
@@ -362,12 +369,15 @@ int main(void){
     ButtonState *lastPressed = NULL;
     
     // text windows
-    TextWindow input(512,60,418,544,240);
-    input.InputString("Test Text... This should be long enough to show how text will be displayed in various windows and appendages.");
-    char *inputText = input.DisplayText();
+    
     TextWindow output(512,676,418,544,240);
     output.InputString("Test Text... This should be long enough to show how text will be displayed in various windows and appendages.");
     char *outputText = output.DisplayText();
+    
+    TextWindow input(512,60,418,544,240);
+    input.InputString("Test Text... This should be long enough to show how text will be displayed in various windows and appendages.");
+    char *inputText = input.DisplayText();
+    
     TextWindow inputFile(256,264,378,220,15);
     inputFile.InputString("Test Text... This should be long enough to show how text will be displayed in various windows and appendages.");
     char *inputFileText = inputFile.DisplayText();
