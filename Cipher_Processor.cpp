@@ -37,25 +37,28 @@ struct TextWindow{
         this->text = (char *)malloc(sizeof(char[128]));
         this->size = 0;
         this->capacity = 128;
+        this->charLimCapacity = 8;
         this->x = 0;
         this->y = 0;
         this->width = 250;
         this->height = 250;
         this->textChanged = false;
     }
-    TextWindow(int cap, int x, int y, int w, int h){
+    TextWindow(int cap, int charLimCap, int x, int y, int w, int h){
         this->text = (char *)malloc(sizeof(char[cap]));
         this->size = 0;
         this->capacity = cap;
+        this->charLimCapacity = charLimCap;
         this->x = x;
         this->y = y;
         this->width = w;
         this->height = h;
-        this->textChanged = false;
+        this->textChanged = true;
     }
     char *text;
     int size;
     int capacity;
+    int charLimCapacity;
     int x;
     int y;
     int width;
@@ -325,13 +328,49 @@ struct TextWindow{
         free(word);
         return;
     }
+    void DisplayCharLimit(char **charLimText){
+        char *charLim = *charLimText;
+        for(int i = 0; i<charLimCapacity; i++)
+            charLim[i] = '\0';
+        
+        // display the text backward
+        int c = capacity;
+        int s = size;
+        int index = 0;
+        while(c>9){
+            charLim[index] = '0'+(c%10);
+            c = c/10;
+            index++;
+        }
+        charLim[index] = '0'+c;
+        charLim[index+1] = '/';
+        index += 2;
+        while(s>9){
+            charLim[index] = '0'+(s%10);
+            s = s/10;
+            index++;
+        }
+        charLim[index] = '0'+s;
+        charLim[index+1] = '\0';
+        
+        // reverse the backward text
+        s = 0;
+        while(index>s){
+            charLim[s] = charLim[s]+charLim[index];
+            charLim[index] = charLim[s]-charLim[index];
+            charLim[s] = charLim[s]-charLim[index];
+            s++;
+            index--;
+        }
+        return;
+    }
 };
 
 struct t_ThreadArgs{
     SelWindow *selWindow;
     TextWindow *windows[7];
 };
-void *textInput(void *input){
+void *textInput(void *input){ // text input thread
     char key;
     const char *pText;
     int fKey;
@@ -485,29 +524,24 @@ int main(void){
     ButtonState *lastPressed = NULL;
     
     // text windows
-    TextWindow input(512,60,418,544,240);
+    TextWindow input(512,8,60,418,544,240);
     char *inputText = (char *)malloc(sizeof(char[input.capacity*2+1]));
-    
-    
-    TextWindow output(512,676,418,544,240);
+    char *inputCharLim = (char *)malloc(sizeof(char[input.charLimCapacity]));
+    TextWindow output(512,8,676,418,544,240);
     char *outputText = (char *)malloc(sizeof(char[output.capacity*2+1]));
-    output.DisplayText(&outputText);
-    
-    TextWindow inputFile(256,264,378,220,15);
+    char *outputCharLim = (char *)malloc(sizeof(char[output.charLimCapacity]));
+    TextWindow inputFile(256,8,264,378,200,15);
     char *inputFileText = (char *)malloc(sizeof(char[inputFile.capacity*2+1]));
-    inputFile.DisplayText(&inputFileText);
-    
-    TextWindow outputFile(256,908,378,192,15);
+    char *inputFileCharLim = (char *)malloc(sizeof(char[inputFile.charLimCapacity]));
+    TextWindow outputFile(256,8,908,378,172,15);
     char *outputFileText = (char *)malloc(sizeof(char[outputFile.capacity*2+1]));
-    outputFile.DisplayText(&outputFileText);
-    
-    TextWindow v_Key(128,205,180,190,15);
+    char *outputFileCharLim = (char *)malloc(sizeof(char[outputFile.charLimCapacity]));
+    TextWindow v_Key(128,8,205,180,165,15);
     char *v_KeyText = (char *)malloc(sizeof(char[v_Key.capacity*2+1]));
-    v_Key.DisplayText(&v_KeyText);
-    
-    TextWindow expectedWord(128,338,136,190,15);
+    char *v_KeyCharLim = (char *)malloc(sizeof(char[v_Key.charLimCapacity]));
+    TextWindow expectedWord(128,8,338,136,165,15);
     char *expectedWordText = (char *)malloc(sizeof(char[expectedWord.capacity*2+1]));
-    expectedWord.DisplayText(&expectedWordText);
+    char *expectedWordCharLim = (char *)malloc(sizeof(char[expectedWord.charLimCapacity]));
     
     SetTextLineSpacing(GLOBALFONTSIZE); // set vertical spacing // setting it to the font size seems to work generally well
     
@@ -745,44 +779,82 @@ int main(void){
             }
             
             // draw text windows
+            // input
             if(input.textChanged){
                 input.DisplayText(&inputText);
+                input.DisplayCharLimit(&inputCharLim);
                 input.textChanged = false;
             }
-            DrawText(inputText,input.x,input.y,GLOBALFONTSIZE,(selWindow==Input?BLACK:LIGHTGRAY));
-            
+            if(inputText[0]=='\0' && selWindow!=Input)
+                DrawText("Type, Drag & Drop, or Paste Text...",input.x,input.y,GLOBALFONTSIZE,LIGHTGRAY);
+            else
+                DrawText(inputText,input.x,input.y,GLOBALFONTSIZE,(selWindow==Input?BLACK:LIGHTGRAY));
+            if(selWindow==Input)
+                DrawText(inputCharLim,input.x+input.width-MeasureText(inputCharLim,GLOBALFONTSIZE),input.y+input.height,GLOBALFONTSIZE,(input.size==input.capacity?RED:SKYBLUE));
+            // output
             if(output.textChanged){
                 output.DisplayText(&outputText);
+                output.DisplayCharLimit(&outputCharLim);
                 output.textChanged = false;
             }
-            DrawText(outputText,output.x,output.y,GLOBALFONTSIZE,(selWindow==Output?BLACK:LIGHTGRAY));
-            
+            if(outputText[0]=='\0' && selWindow!=Output)
+                DrawText("Output...",output.x,output.y,GLOBALFONTSIZE,LIGHTGRAY);
+            else
+                DrawText(outputText,output.x,output.y,GLOBALFONTSIZE,(selWindow==Output?BLACK:LIGHTGRAY));
+            if(selWindow==Output)
+                DrawText(outputCharLim,output.x+output.width-MeasureText(outputCharLim,GLOBALFONTSIZE),output.y+output.height,GLOBALFONTSIZE,(output.size==output.capacity?RED:SKYBLUE));
+            // input file
             if(inputFile.textChanged){
                 inputFile.DisplayText(&inputFileText);
+                inputFile.DisplayCharLimit(&inputFileCharLim);
                 inputFile.textChanged = false;
             }
-            DrawText(inputFileText,inputFile.x,inputFile.y,GLOBALFONTSIZE,(selWindow==InputFile?BLACK:LIGHTGRAY));
-            
+            if(inputFileText[0]=='\0' && selWindow!=InputFile)
+                DrawText("Type or Paste File Path...",inputFile.x,inputFile.y,GLOBALFONTSIZE,LIGHTGRAY);
+            else
+                DrawText(inputFileText,inputFile.x,inputFile.y,GLOBALFONTSIZE,(selWindow==InputFile?BLACK:LIGHTGRAY));
+            if(selWindow==InputFile)
+                DrawText(inputFileCharLim,inputFile.x+inputFile.width+MeasureText("256/256",GLOBALFONTSIZE)-MeasureText(inputFileCharLim,GLOBALFONTSIZE)
+            ,inputFile.y,GLOBALFONTSIZE,(inputFile.size==inputFile.capacity?RED:SKYBLUE));
+            // output file
             if(outputFile.textChanged){
                 outputFile.DisplayText(&outputFileText);
+                outputFile.DisplayCharLimit(&outputFileCharLim);
                 outputFile.textChanged = false;
             }
-            DrawText(outputFileText,outputFile.x,outputFile.y,GLOBALFONTSIZE,(selWindow==OutputFile?BLACK:LIGHTGRAY));
-            
+            if(outputFileText[0]=='\0' && selWindow!=OutputFile)
+                DrawText("Output File Path...",outputFile.x,outputFile.y,GLOBALFONTSIZE,(selWindow==OutputFile?BLACK:LIGHTGRAY));
+            else
+                DrawText(outputFileText,outputFile.x,outputFile.y,GLOBALFONTSIZE,(selWindow==OutputFile?BLACK:LIGHTGRAY));
+            if(selWindow==OutputFile)
+                DrawText(outputFileCharLim,outputFile.x+outputFile.width+MeasureText("256/256",GLOBALFONTSIZE)-MeasureText(outputFileCharLim,GLOBALFONTSIZE),outputFile.y,GLOBALFONTSIZE,(outputFile.size==outputFile.capacity?RED:SKYBLUE));
+            // vigenere key
             if(cipher==Vigenere && operation<Crack){
                 if(v_Key.textChanged){
                     v_Key.DisplayText(&v_KeyText);
+                    v_Key.DisplayCharLimit(&v_KeyCharLim);
                     v_Key.textChanged = false;
                 }
-                DrawText(v_KeyText,v_Key.x,v_Key.y,GLOBALFONTSIZE,(selWindow==V_Key?BLACK:LIGHTGRAY));
+                if(v_KeyText[0]=='\0' && selWindow!=V_Key)
+                    DrawText("Type or Paste Text...",v_Key.x,v_Key.y,GLOBALFONTSIZE,(selWindow==V_Key?BLACK:LIGHTGRAY));
+                else
+                    DrawText(v_KeyText,v_Key.x,v_Key.y,GLOBALFONTSIZE,(selWindow==V_Key?BLACK:LIGHTGRAY));
+                if(selWindow==V_Key)
+                    DrawText(v_KeyCharLim,v_Key.x+v_Key.width+MeasureText("256/256",GLOBALFONTSIZE)-MeasureText(v_KeyCharLim,GLOBALFONTSIZE),v_Key.y,GLOBALFONTSIZE,(v_Key.size==v_Key.capacity?RED:SKYBLUE));
             }
-            
+            // expected word
             if(operation==Crack){
                 if(expectedWord.textChanged){
                     expectedWord.DisplayText(&expectedWordText);
+                    expectedWord.DisplayCharLimit(&expectedWordCharLim);
                     expectedWord.textChanged = false;
                 }
-                DrawText(expectedWordText,expectedWord.x,expectedWord.y,GLOBALFONTSIZE,(selWindow==ExpectedWord?BLACK:LIGHTGRAY));
+                if(expectedWordText[0]=='\0' && selWindow!=ExpectedWord)
+                    DrawText("Type or Paste Text...",expectedWord.x,expectedWord.y,GLOBALFONTSIZE,(selWindow==ExpectedWord?BLACK:LIGHTGRAY));
+                else
+                    DrawText(expectedWordText,expectedWord.x,expectedWord.y,GLOBALFONTSIZE,(selWindow==ExpectedWord?BLACK:LIGHTGRAY));
+                if(selWindow==ExpectedWord)
+                    DrawText(expectedWordCharLim,expectedWord.x+expectedWord.width+MeasureText("256/256",GLOBALFONTSIZE)-MeasureText(expectedWordCharLim,GLOBALFONTSIZE),expectedWord.y,GLOBALFONTSIZE,(expectedWord.size==expectedWord.capacity?RED:SKYBLUE));
             }
             
         EndDrawing();
@@ -793,11 +865,17 @@ int main(void){
     
     // FREE YOUR VARIABLES
     free(inputText);
+    free(inputCharLim);
     free(outputText);
+    free(outputCharLim);
     free(inputFileText);
+    free(inputFileCharLim);
     free(outputFileText);
+    free(outputFileCharLim);
     free(v_KeyText);
+    free(v_KeyCharLim);
     free(expectedWordText);
+    free(expectedWordCharLim);
     
     CloseWindow();
     return 0;
