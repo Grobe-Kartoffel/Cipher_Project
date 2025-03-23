@@ -42,7 +42,7 @@ struct TextWindow{
         this->y = 0;
         this->width = 250;
         this->height = 250;
-        this->textChanged = false;
+        this->textChanged = false; // keep false, creates race condition where display text is not properly initialized otherwise
     }
     TextWindow(int cap, int charLimCap, int x, int y, int w, int h){
         this->text = (char *)malloc(sizeof(char[cap]));
@@ -53,7 +53,7 @@ struct TextWindow{
         this->y = y;
         this->width = w;
         this->height = h;
-        this->textChanged = true;
+        this->textChanged = false; // keep false, creates race condition where display text is not properly initialized otherwise
     }
     char *text;
     int size;
@@ -814,8 +814,7 @@ int main(void){
             else
                 DrawText(inputFileText,inputFile.x,inputFile.y,GLOBALFONTSIZE,(selWindow==InputFile?BLACK:LIGHTGRAY));
             if(selWindow==InputFile)
-                DrawText(inputFileCharLim,inputFile.x+inputFile.width+MeasureText("256/256",GLOBALFONTSIZE)-MeasureText(inputFileCharLim,GLOBALFONTSIZE)
-            ,inputFile.y,GLOBALFONTSIZE,(inputFile.size==inputFile.capacity?RED:SKYBLUE));
+                DrawText(inputFileCharLim,inputFile.x+inputFile.width+MeasureText("256/256",GLOBALFONTSIZE)-MeasureText(inputFileCharLim,GLOBALFONTSIZE),inputFile.y,GLOBALFONTSIZE,(inputFile.size==inputFile.capacity?RED:SKYBLUE));
             // output file
             if(outputFile.textChanged){
                 outputFile.DisplayText(&outputFileText);
