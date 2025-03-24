@@ -98,6 +98,40 @@ struct TextWindow{
         }
         return 1; // if last char was '\0' then loop would have returned 0, therefore the text was truncated if we are here
     }
+    bool InputNum(const int n){
+        int num = n;
+        if(num<0){
+            if(!InputKey('-'))
+                return false;
+            num *= -1;
+        }
+        int start = size;
+        while(num>9){ // input all but last digit in reverse
+            if(!InputKey('0'+(num%10))){ // if we fail to input a key
+                for(int i = start; i<size; i++) // erase it all and abort
+                    text[i] = '\0';
+                size = start;
+                return false;
+            }
+            num /= 10;
+        } // input last digit in reverse
+        if(!InputKey('0'+num)){ // if we fail to input a key
+            for(int i = start; i<size; i++) // erase it all and abort
+                text[i] = '\0';
+            size = start;
+            return false;
+        }
+        // reverse digits
+        int end = size-1;
+        while(start<end){
+            text[start] = text[start]+text[end];
+            text[end] = text[start]-text[end];
+            text[start] = text[start]-text[end];
+            start++;
+            end--;
+        }
+        return true;
+    }
     void DisplayText(char **displayText){
         int dSize = 0;
         int dCap = capacity*2+1; // large enough for every character to be on its own line
@@ -725,10 +759,12 @@ int main(void){
                 droppedFiles = LoadDroppedFiles();
                 if(droppedFiles.count==1){
                     input.Clear();
-                    int success = input.InputString(droppedFiles.paths[0]);
-                    if(success==1) // string was truncated
+                    if( input.InputString(droppedFiles.paths[0])==1 ) // string was truncated
                         input.Clear();
                     input.textChanged = true;
+                    output.Clear();
+                    output.InputNum(GetFileLength(droppedFiles.paths[0]));
+                    output.textChanged = true;
                 }
             }
             UnloadDroppedFiles(droppedFiles); // always do this so ignored files are discarded
