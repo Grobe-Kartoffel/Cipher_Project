@@ -536,10 +536,10 @@ int main(void){
     TextWindow outputFile(256,8,908,378,172,15);
     char *outputFileText = (char *)malloc(sizeof(char[outputFile.capacity*2+1]));
     char *outputFileCharLim = (char *)malloc(sizeof(char[outputFile.charLimCapacity]));
-    TextWindow v_Key(128,8,205,180,165,15);
+    TextWindow v_Key(128,8,205,180,170,15);
     char *v_KeyText = (char *)malloc(sizeof(char[v_Key.capacity*2+1]));
     char *v_KeyCharLim = (char *)malloc(sizeof(char[v_Key.charLimCapacity]));
-    TextWindow expectedWord(128,8,338,136,165,15);
+    TextWindow expectedWord(128,8,338,136,170,15);
     char *expectedWordText = (char *)malloc(sizeof(char[expectedWord.capacity*2+1]));
     char *expectedWordCharLim = (char *)malloc(sizeof(char[expectedWord.charLimCapacity]));
     
@@ -839,7 +839,7 @@ int main(void){
                 else
                     DrawText(v_KeyText,v_Key.x,v_Key.y,GLOBALFONTSIZE,(selWindow==V_Key?BLACK:LIGHTGRAY));
                 if(selWindow==V_Key)
-                    DrawText(v_KeyCharLim,v_Key.x+v_Key.width+MeasureText("256/256",GLOBALFONTSIZE)-MeasureText(v_KeyCharLim,GLOBALFONTSIZE),v_Key.y,GLOBALFONTSIZE,(v_Key.size==v_Key.capacity?RED:SKYBLUE));
+                    DrawText(v_KeyCharLim,v_Key.x+v_Key.width+MeasureText("128/128",GLOBALFONTSIZE)-MeasureText(v_KeyCharLim,GLOBALFONTSIZE),v_Key.y,GLOBALFONTSIZE,(v_Key.size==v_Key.capacity?RED:SKYBLUE));
             }
             // expected word
             if(operation==Crack){
@@ -853,7 +853,27 @@ int main(void){
                 else
                     DrawText(expectedWordText,expectedWord.x,expectedWord.y,GLOBALFONTSIZE,(selWindow==ExpectedWord?BLACK:LIGHTGRAY));
                 if(selWindow==ExpectedWord)
-                    DrawText(expectedWordCharLim,expectedWord.x+expectedWord.width+MeasureText("256/256",GLOBALFONTSIZE)-MeasureText(expectedWordCharLim,GLOBALFONTSIZE),expectedWord.y,GLOBALFONTSIZE,(expectedWord.size==expectedWord.capacity?RED:SKYBLUE));
+                    DrawText(expectedWordCharLim,expectedWord.x+expectedWord.width+MeasureText("128/128",GLOBALFONTSIZE)-MeasureText(expectedWordCharLim,GLOBALFONTSIZE),expectedWord.y,GLOBALFONTSIZE,(expectedWord.size==expectedWord.capacity?RED:SKYBLUE));
+            }
+            
+            // draw info text
+            if(operation==Info){
+                SetTextLineSpacing(GLOBALFONTSIZE*1.5);
+                switch(cipher){
+                    case Vigenere:
+                        DrawText("\tThe Vigenere Cipher uses an alphabet, for example, 'A-Z', and a keyword, 'example' to encode a\nmessage. Each letter in the alphabet is assigned an index number: A-0, B-1, C-2...\n\tWhen encrypting a message, the index number of each letter is added to the index number of the next\nletter in the keyword, producing a new, encrypted letter.\n\tDecrypting is very similar, but the keyword index number is subtracted from the message index number\nto produce the original text.",gui[32].x+gui[32].w+20,gui[32].y,GLOBALFONTSIZE*1.35,BLACK);
+                        break;
+                    case Ceasar:
+                        DrawText("\tThe Ceasar Box Cipher works by arranging the letters of a message into a grid and reading by\ncolumns instead of rows. You select the width of the grid, for example, 5. Then every 5 letters forms a\nnew row. The encrypted text then displays every 5th character in the message.",gui[32].x+gui[32].w+20,gui[32].y,GLOBALFONTSIZE*1.35,BLACK);
+                        break;
+                    case ZigZag:
+                        DrawText("\tThe Rail Fence, or Zig-Zag, Cipher works by placing letters of a message onto any number of rows.\n\tThe first letter starts at either the top or bottom row. If it started at the top, the next letter is\nadded to the next row down, and so on until you reach the bottom row, where the next letter is added\nto the next row up. Once all letters have been placed on a row, each row, from top to bottom is read to\ncreate the encrypted message.\n\tTo decrypt a message, place the letters where they would appear in the zig-zag pattern and read\nalong the zigzag instead of along each row.",gui[32].x+gui[32].w+20,gui[32].y,GLOBALFONTSIZE*1.35,BLACK);
+                        break;
+                    case Spiral:
+                        DrawText("\tThe Spiral Cipher works by arranging the letters of a message into a grid, following a spiral pattern,\nand reading by rows or columns.\n\tTo encrypt, chose to either start at one of the corners of the grid and spiral inward clockwise or\ncounterclockwise, or start at the center and move up/down/left/right to start spiraling outward\nclockwise or counterclockwise.\n\tTo decrypt a message, fill the grid by row or column, and then read using the same spiral used to\nencrypt it.",gui[32].x+gui[32].w+20,gui[32].y,GLOBALFONTSIZE*1.35,BLACK);
+                        break;
+                }
+                SetTextLineSpacing(GLOBALFONTSIZE);
             }
             
         EndDrawing();
