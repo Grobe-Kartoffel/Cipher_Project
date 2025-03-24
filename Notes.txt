@@ -5,6 +5,8 @@ Raylib Supports Drag and Drop
 - bool IsFileDropped(void); // tells us if a file was dropped
 - FilePathList LoadDroppedFiles(void); // loads dropped file paths into a list
 - void UnloadDroppedFiles(FilePathList files); // unload file paths
+// load function loads all files dropped since last unload function
+// loading and unloading after each file drop ensures that only 1 file should be found each time
 
 - char *LoadFileText(const char *filename); // load text data from file (read), returns a '/0' terminated string
 - void UnloadFileText(char *text); // unload file text data allocated by LoadFileText()

@@ -5,6 +5,17 @@
 
 #include "raylib.h"
 
+/* TO DO:
+ * read drag&dropped files
+    * verify file type
+    * verify text size?
+    * read in chars just over the input window capacity
+    * implement same behavior for file path typed into inputFile window
+ * fix word wrap when last word is too long to fit in window
+    * currently, entire word is reduced to '...'
+    * keep as much of word as possible before adding '...'
+ */
+
 int GLOBALFONTSIZE = 15;
 
 enum Cipher{Vigenere,Ceasar,ZigZag,Spiral};
@@ -65,6 +76,8 @@ struct TextWindow{
     int height;
     bool textChanged;
     void Clear(){
+        for(int i = 0; i<capacity; i++)
+            text[i] = '\0';
         size = 0;
     }
     bool InputKey(const char c){
@@ -549,6 +562,9 @@ int main(void){
     float mx;
     float my;
     
+    // drag&drop files
+    FilePathList droppedFiles;
+    
     // threads
     t_ThreadArgs tArgs;
     tArgs.selWindow = &selWindow;
@@ -704,9 +720,22 @@ int main(void){
             else
                 V_alphabetMenu_OpenOption = 0;
         }
+        if(IsFileDropped()){
+            if(mx>=46 && mx<616 && my>=404 && my<684){ // file was dropped into input window // read
+                droppedFiles = LoadDroppedFiles();
+                if(droppedFiles.count==1){
+                    input.Clear();
+                    int success = input.InputString(droppedFiles.paths[0]);
+                    if(success==1) // string was truncated
+                        input.Clear();
+                    input.textChanged = true;
+                }
+            }
+            UnloadDroppedFiles(droppedFiles); // always do this so ignored files are discarded
+        }
         
         // draw
-        BeginDrawing();
+        BeginDrawing();{
             ClearBackground(WHITE);
             
             // draw GUI
@@ -875,7 +904,7 @@ int main(void){
                 }
                 SetTextLineSpacing(GLOBALFONTSIZE);
             }
-            
+        }
         EndDrawing();
     }
     
