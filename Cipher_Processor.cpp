@@ -1,19 +1,29 @@
 #include <pthread.h> // threading
 #include <stdio.h> // printf()
-#include <stdlib.h> // malloc()
+#include <stdlib.h> // malloc() // file IO
 #include <math.h> // pow()
 
 #include "raylib.h"
 
 /* TO DO:
  * read drag&dropped files
-    * verify file type
-    * verify text size?
-    * read in chars just over the input window capacity
+    ^ verify file type
+    ^ verify text size?
+    ^ read in chars just over the input window capacity
     * implement same behavior for file path typed into inputFile window
  * fix word wrap when last word is too long to fit in window
     * currently, entire word is reduced to '...'
     * keep as much of word as possible before adding '...'
+ * display errors for:
+    * typing too many characters into a text window?
+    * importing a file who's path is too long
+    * importing a file with the wrong extension
+    * importing a file that is too long
+    * file could not be imported for any other reason
+    * output path could not be generated
+    * output path with the wrong extension
+    * could not open export file
+    * could not export for any other reason
  */
 
 int GLOBALFONTSIZE = 15;
@@ -596,8 +606,11 @@ int main(void){
     float mx;
     float my;
     
-    // drag&drop files
-    FilePathList droppedFiles;
+    // file vars
+    FilePathList droppedFiles; // list of dragged&dropped files
+    FILE *inFile = NULL; // input file pointer
+    FILE *outFile = NULL; // output file pointer
+    char c; // buffer char to read to and from files
     
     // threads
     t_ThreadArgs tArgs;
@@ -757,14 +770,33 @@ int main(void){
         if(IsFileDropped()){
             if(mx>=46 && mx<616 && my>=404 && my<684){ // file was dropped into input window // read
                 droppedFiles = LoadDroppedFiles();
-                if(droppedFiles.count==1){
-                    input.Clear();
-                    if( input.InputString(droppedFiles.paths[0])==1 ) // string was truncated
+                if(droppedFiles.count==1 && TextLength(droppedFiles.paths[0])<inputFile.capacity && (IsFileExtension(droppedFiles.paths[0], ".txt") || IsFileExtension(droppedFiles.paths[0], ".csv")) && GetFileLength(droppedFiles.paths[0])<2048){
+                    inputFile.Clear();
+                    inputFile.InputString(droppedFiles.paths[0]);
+                    inputFile.textChanged = true;
+                    // input file
+                    if(inFile!=NULL){
+                        fclose(inFile);
+                        inFile = NULL;
+                    }
+                    inFile = fopen(droppedFiles.paths[0],"r");
+                    if(inFile!=NULL){
+                        c = fgetc(inFile);
                         input.Clear();
-                    input.textChanged = true;
-                    output.Clear();
-                    output.InputNum(GetFileLength(droppedFiles.paths[0]));
-                    output.textChanged = true;
+                        while( c!=EOF){
+                            if( input.size==input.capacity-3 && GetFileLength(droppedFiles.paths[0])>=input.capacity ){ // if there's no room left and text is too long to display
+                                input.InputString("...");
+                                break;
+                            }
+                            if(!input.InputKey(c))
+                                break;
+                            c = fgetc(inFile);
+                        }
+                        input.textChanged = true;
+                    }
+                    outputFile.Clear();
+                    outputFile.InputNum(GetFileLength(droppedFiles.paths[0]));
+                    outputFile.textChanged = true;
                 }
             }
             UnloadDroppedFiles(droppedFiles); // always do this so ignored files are discarded
@@ -946,6 +978,12 @@ int main(void){
     
     // JOIN YOUR THREADS
     pthread_join(inputThread,NULL);
+    
+    // CLOSE YOUR FILES
+    if(inFile!=NULL)
+        fclose(inFile);
+    if(outFile!=NULL)
+        fclose(outFile);
     
     // FREE YOUR VARIABLES
     free(inputText);
