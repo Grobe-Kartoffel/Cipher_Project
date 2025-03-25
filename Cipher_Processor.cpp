@@ -6,10 +6,8 @@
 #include "raylib.h"
 
 /* TO DO:
- * fix word wrap when last word is too long to fit in window
-    * currently, entire word is reduced to '...'
-    * keep as much of word as possible before adding '...'
  * display errors for:
+    * dragging a file over the wrong location
     * typing too many characters into a text window?
     * importing a file who's path is too long
     * importing a file with the wrong extension
@@ -181,11 +179,21 @@ struct TextWindow{
             if(text[i]==' '){
                 // code if it is the last line and word is too long
                 if( ((numLines+1)*GLOBALFONTSIZE)>=height && MeasureText(line,GLOBALFONTSIZE)+MeasureText(word,GLOBALFONTSIZE)+bufferLength>=width){
-                    line[lSize] = '.';
-                    line[lSize+1] = '.';
-                    line[lSize+2] = '.';
-                    line[lSize+3] = '\0';
-                    lSize += 4;
+                    // add as much of the word to the line as possible before truncating
+                    for(int i = 0; i<wSize; i++){
+                        if(MeasureText(line,GLOBALFONTSIZE)+bufferLength<width){
+                            line[lSize] = word[i];
+                            lSize++;
+                            if(MeasureText(line,GLOBALFONTSIZE)+bufferLength>=width){
+                                line[lSize] = '.';
+                                line[lSize+1] = '.';
+                                line[lSize+2] = '.';
+                                line[lSize+3] = '\0';
+                                lSize += 4;
+                                break;
+                            }
+                        }
+                    }
                     // copy line to display
                     for(int j = 0; j<lSize; j++){
                         display[dSize] = line[j];
@@ -213,13 +221,31 @@ struct TextWindow{
                     numLines++;
                     // copy word to line
                     if( ((numLines+1)*GLOBALFONTSIZE)>=height && MeasureText(word,GLOBALFONTSIZE)+bufferLength>=width){ // last line and word is too long
-                        // we can take a shortcut because we know we just added the line to the display
-                        display[dSize] = '.';
-                        display[dSize+1] = '.';
-                        display[dSize+2] = '.';
-                        display[dSize+3] = '\0';
+                        // add as much of the word to the line as possible before truncating
+                        for(int i = 0; i<wSize; i++){
+                            if(MeasureText(line,GLOBALFONTSIZE)+bufferLength<width){
+                                line[lSize] = word[i];
+                                lSize++;
+                                if(MeasureText(line,GLOBALFONTSIZE)+bufferLength>=width){
+                                    line[lSize] = '.';
+                                    line[lSize+1] = '.';
+                                    line[lSize+2] = '.';
+                                    line[lSize+3] = '\0';
+                                    lSize += 4;
+                                    break;
+                                }
+                            }
+                        }
+                        // copy line to display
+                        for(int j = 0; j<lSize; j++){
+                            display[dSize] = line[j];
+                            dSize++;
+                            line[j] = '\0'; // erase the line as we go
+                        }
+                        lSize = 0;
                         free(line);
                         free(word);
+                        display[dSize] = '\0';
                         return;
                     }
                     // otherwise, we add the word normally
@@ -245,12 +271,28 @@ struct TextWindow{
             else if(MeasureText(word,GLOBALFONTSIZE)+bufferLength>=width){
                 // if we are on the last 2 lines, add '...' and return // need more than that to display word
                 if( ((numLines+2)*GLOBALFONTSIZE)>=height){
-                    // finish line
-                    line[lSize] = '.';
-                    line[lSize+1] = '.';
-                    line[lSize+2] = '.';
-                    line[lSize+3] = '\0';
-                    lSize += 4;
+                    // copy line to display
+                    for(int j = 0; j<lSize; j++){
+                        display[dSize] = line[j];
+                        dSize++;
+                        line[j] = '\0'; // erase the line as we go
+                    }
+                    lSize = 0;
+                    // add as much of the word to the line as possible before truncating
+                    for(int j = 0; j<wSize; j++){
+                        if(MeasureText(line,GLOBALFONTSIZE)+bufferLength<width){
+                            line[lSize] = word[j];
+                            lSize++;
+                            if(MeasureText(line,GLOBALFONTSIZE)+bufferLength>=width){
+                                line[lSize] = '.';
+                                line[lSize+1] = '.';
+                                line[lSize+2] = '.';
+                                line[lSize+3] = '\0';
+                                lSize += 4;
+                                break;
+                            }
+                        }
+                    }
                     // copy line to display
                     for(int j = 0; j<lSize; j++){
                         display[dSize] = line[j];
@@ -307,11 +349,21 @@ struct TextWindow{
         // if we make it here, we found the end of the text and have one last (should be '\0' terminated) word to add
         // code if it is the last line and word is too long
         if( ((numLines+1)*GLOBALFONTSIZE)>=height && MeasureText(line,GLOBALFONTSIZE)+MeasureText(word,GLOBALFONTSIZE)+bufferLength>=width){
-            line[lSize] = '.';
-            line[lSize+1] = '.';
-            line[lSize+2] = '.';
-            line[lSize+3] = '\0';
-            lSize += 4;
+            // add as much of the word to the line as possible before truncating
+            for(int i = 0; i<wSize; i++){
+                if(MeasureText(line,GLOBALFONTSIZE)+bufferLength<width){
+                    line[lSize] = word[i];
+                    lSize++;
+                    if(MeasureText(line,GLOBALFONTSIZE)+bufferLength>=width){
+                        line[lSize] = '.';
+                        line[lSize+1] = '.';
+                        line[lSize+2] = '.';
+                        line[lSize+3] = '\0';
+                        lSize += 4;
+                        break;
+                    }
+                }
+            }
             // copy line to display
             for(int j = 0; j<lSize; j++){
                 display[dSize] = line[j];
@@ -339,11 +391,28 @@ struct TextWindow{
             numLines++;
             // copy word to line
             if( ((numLines+1)*GLOBALFONTSIZE)>=height && MeasureText(word,GLOBALFONTSIZE)+bufferLength>=width){ // last line and word is too long
-                // we can take a shortcut because we know we just added the line to the display
-                display[dSize] = '.';
-                display[dSize+1] = '.';
-                display[dSize+2] = '.';
-                display[dSize+3] = '\0';
+                // add as much of the word to the line as possible before truncating
+                for(int i = 0; i<wSize; i++){
+                    if(MeasureText(line,GLOBALFONTSIZE)+bufferLength<width){
+                        line[lSize] = word[i];
+                        lSize++;
+                        if(MeasureText(line,GLOBALFONTSIZE)+bufferLength>=width){
+                            line[lSize] = '.';
+                            line[lSize+1] = '.';
+                            line[lSize+2] = '.';
+                            line[lSize+3] = '\0';
+                            lSize += 4;
+                            break;
+                        }
+                    }
+                }
+                // copy line to display
+                for(int j = 0; j<lSize; j++){
+                    display[dSize] = line[j];
+                    dSize++;
+                    line[j] = '\0'; // erase the line as we go
+                }
+                lSize = 0;
                 free(line);
                 free(word);
                 display[dSize] = '\0';
@@ -848,9 +917,9 @@ int main(void){
                 V_alphabetMenu_OpenOption = 0;
         }
         if(IsFileDropped()){
-            if(mx>=46 && mx<616 && my>=404 && my<684){ // file was dropped into input window // read
-                droppedFiles = LoadDroppedFiles();
-                if(droppedFiles.count==1 && TextLength(droppedFiles.paths[0])<inputFile.capacity && (IsFileExtension(droppedFiles.paths[0], ".txt") || IsFileExtension(droppedFiles.paths[0], ".csv")) && GetFileLength(droppedFiles.paths[0])<2048){
+            droppedFiles = LoadDroppedFiles();
+            if(droppedFiles.count==1 && mx>=46 && mx<616 && my>=404 && my<684){ // file was dropped into input window // read
+                if(TextLength(droppedFiles.paths[0])<inputFile.capacity && (IsFileExtension(droppedFiles.paths[0], ".txt") || IsFileExtension(droppedFiles.paths[0], ".csv")) && GetFileLength(droppedFiles.paths[0])<2048){
                     inputFile.Clear();
                     inputFile.InputString(droppedFiles.paths[0]);
                     inputFile.textChanged = true;
@@ -908,7 +977,7 @@ int main(void){
                     }
                 }
             }
-            UnloadDroppedFiles(droppedFiles); // always do this so ignored files are discarded
+            UnloadDroppedFiles(droppedFiles);
         }
         
         // draw
