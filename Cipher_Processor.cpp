@@ -701,8 +701,39 @@ int main(void){
                 executeButton = Not_Rendered;
         }
         if(IsMouseButtonReleased(0)){ // release buttons
-            if(importButton==Pressed && mx>=536 && mx<616 && my>=366 && my<404)// activate import button
+            if(importButton==Pressed && mx>=536 && mx<616 && my>=366 && my<404){// activate import button
                 importButton = Enabled;
+                if(inputFile.size>=5 && (IsFileExtension(inputFile.text, ".txt") || IsFileExtension(inputFile.text, ".csv")) ){
+                    if(inFile!=NULL){
+                        fclose(inFile);
+                        inFile = NULL;
+                    }
+                    inFile = fopen(inputFile.text,"r");
+                    if(inFile!=NULL){
+                        if(GetFileLength(inputFile.text)>=2048){
+                            fclose(inFile);
+                            inFile = NULL;
+                        }
+                        else{
+                            c = fgetc(inFile);
+                            input.Clear();
+                            while(c!=EOF){
+                                if( input.size==input.capacity-3 && GetFileLength(inputFile.text)>=input.capacity ){ // if there's no room left and text is too long to display
+                                    input.InputString("...");
+                                    break;
+                                }
+                                if(!input.InputKey(c))
+                                    break;
+                                c = fgetc(inFile);
+                            }
+                            input.textChanged = true;
+                            outputFile.Clear();
+                            outputFile.InputNum(GetFileLength(inputFile.text));
+                            outputFile.textChanged = true;
+                        }
+                    }
+                }
+            }
             if(exportButton==Pressed && mx>=1152 && mx<1232 && my>=366 && my<404)// activate export button
                 exportButton = Enabled;
             if(executeButton==Pressed && mx>=1068 && mx<1220 && my>=276 && my<328)// activate execute button
@@ -783,7 +814,7 @@ int main(void){
                     if(inFile!=NULL){
                         c = fgetc(inFile);
                         input.Clear();
-                        while( c!=EOF){
+                        while(c!=EOF){
                             if( input.size==input.capacity-3 && GetFileLength(droppedFiles.paths[0])>=input.capacity ){ // if there's no room left and text is too long to display
                                 input.InputString("...");
                                 break;
