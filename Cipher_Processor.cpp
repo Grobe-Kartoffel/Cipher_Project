@@ -6,11 +6,6 @@
 #include "raylib.h"
 
 /* TO DO:
- * read drag&dropped files
-    ^ verify file type
-    ^ verify text size?
-    ^ read in chars just over the input window capacity
-    * implement same behavior for file path typed into inputFile window
  * fix word wrap when last word is too long to fit in window
     * currently, entire word is reduced to '...'
     * keep as much of word as possible before adding '...'
@@ -24,6 +19,8 @@
     * output path with the wrong extension
     * could not open export file
     * could not export for any other reason
+ * display messages for:
+    * successful file export
  */
 
 int GLOBALFONTSIZE = 15;
@@ -701,7 +698,7 @@ int main(void){
                 executeButton = Not_Rendered;
         }
         if(IsMouseButtonReleased(0)){ // release buttons
-            if(importButton==Pressed && mx>=536 && mx<616 && my>=366 && my<404){// activate import button
+            if(importButton==Pressed && mx>=536 && mx<616 && my>=366 && my<404){ // activate import button
                 importButton = Enabled;
                 if(inputFile.size>=5 && (IsFileExtension(inputFile.text, ".txt") || IsFileExtension(inputFile.text, ".csv")) ){
                     if(inFile!=NULL){
@@ -730,12 +727,64 @@ int main(void){
                             outputFile.Clear();
                             outputFile.InputNum(GetFileLength(inputFile.text));
                             outputFile.textChanged = true;
+                            
+                            // create output file name
+                            outputFile.Clear();
+                            outputFile.InputString(GetFileNameWithoutExt(inputFile.text));
+                            switch(cipher){
+                                case Vigenere:
+                                    outputFile.InputString("_Vigenere_");
+                                    break;
+                                case Ceasar:
+                                    outputFile.InputString("_Ceasar_");
+                                    break;
+                                case ZigZag:
+                                    outputFile.InputString("_ZigZag_");
+                                    break;
+                                case Spiral:
+                                    outputFile.InputString("_Spiral_");
+                                    break;
+                            }
+                            switch(operation){
+                                case Encrypt:
+                                    outputFile.InputString("Encryption.txt");
+                                    break;
+                                case Decrypt:
+                                    outputFile.InputString("Decryption.txt");
+                                    break;
+                                case Crack:
+                                    outputFile.InputString("Cracked.txt");
+                                    break;
+                            }
+                            if(!IsFileExtension(outputFile.text,".txt")) // verify the whole name could be printed
+                                outputFile.Clear();
+                            outputFile.textChanged = true;
                         }
                     }
                 }
             }
-            if(exportButton==Pressed && mx>=1152 && mx<1232 && my>=366 && my<404)// activate export button
+            if(exportButton==Pressed && mx>=1152 && mx<1232 && my>=366 && my<404){ // activate export button
                 exportButton = Enabled;
+                if(IsFileExtension(outputFile.text,".txt")){
+                    if(outFile!=NULL){
+                        fflush(outFile);
+                        fclose(outFile);
+                        outFile = NULL;
+                    }
+                    outFile = fopen(outputFile.text,"w");
+                    if(outFile!=NULL){
+                        for(int i = 0; i<output.capacity; i++){
+                            c = output.text[i];
+                            if(c=='\0')
+                                break;
+                            fputc(c,outFile);
+                        }
+                        fflush(outFile);
+                        fclose(outFile);
+                        outFile = NULL;
+                    }
+                }
+            }
             if(executeButton==Pressed && mx>=1068 && mx<1220 && my>=276 && my<328)// activate execute button
                 executeButton = Enabled;
             if(V_alphabetButton==Pressed && mx>=330 && mx<368 && my>=124 && my<162){// activate vigenere alphabet button
@@ -824,10 +873,39 @@ int main(void){
                             c = fgetc(inFile);
                         }
                         input.textChanged = true;
+                        
+                        // create output file name
+                        outputFile.Clear();
+                        outputFile.InputString(GetFileNameWithoutExt(droppedFiles.paths[0]));
+                        switch(cipher){
+                            case Vigenere:
+                                outputFile.InputString("_Vigenere_");
+                                break;
+                            case Ceasar:
+                                outputFile.InputString("_Ceasar_");
+                                break;
+                            case ZigZag:
+                                outputFile.InputString("_ZigZag_");
+                                break;
+                            case Spiral:
+                                outputFile.InputString("_Spiral_");
+                                break;
+                        }
+                        switch(operation){
+                            case Encrypt:
+                                outputFile.InputString("Encryption.txt");
+                                break;
+                            case Decrypt:
+                                outputFile.InputString("Decryption.txt");
+                                break;
+                            case Crack:
+                                outputFile.InputString("Cracked.txt");
+                                break;
+                        }
+                        if(!IsFileExtension(outputFile.text,".txt")) // verify the whole name could be printed
+                            outputFile.Clear();
+                        outputFile.textChanged = true;
                     }
-                    outputFile.Clear();
-                    outputFile.InputNum(GetFileLength(droppedFiles.paths[0]));
-                    outputFile.textChanged = true;
                 }
             }
             UnloadDroppedFiles(droppedFiles); // always do this so ignored files are discarded
