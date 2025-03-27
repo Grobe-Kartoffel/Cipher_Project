@@ -6,6 +6,9 @@
 #include "raylib.h"
 
 /* TO DO:
+ * when word is longer than window, - is placed at end of text, but missing character is not added to new line
+ * FIX ALPABET
+ * FIX ALPABET DRAWING ORDER (draw over keyword text)
  * display errors for:
     * dragging a file over the wrong location
     * typing too many characters into a text window?
