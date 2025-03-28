@@ -6,7 +6,7 @@
 #include "raylib.h"
 
 /* TO DO:
- * VIGENERE CIPHER
+ * VIGENERE CIPHER FUNCTION
  * display errors for:
     * dragging a file over the wrong location
     * typing too many characters into a text window?
@@ -489,7 +489,61 @@ struct TextWindow{
     }
 };
 
+struct V_CipherArgs{
+    V_CipherArgs(){
+        operation = NULL;
+        alphabetChoice = NULL;
+        fileInput = false;
+        inputFile = NULL;
+        outputFile = NULL;
+        inputText = NULL;
+        outputText = NULL;
+        key = NULL;
+        expectedWord = NULL;
+    }
+    V_CipherArgs(Operation *operation, int *alphabetChoice, FILE *inputFile, FILE *outputFile, TextWindow *inputText, TextWindow *outputText, TextWindow *key, TextWindow *expectedWord){
+        this->operation = operation;
+        this->alphabetChoice = alphabetChoice;
+        this->fileInput = false;
+        this->inputFile = inputFile;
+        this->outputFile = outputFile;
+        this->inputText = inputText;
+        this->outputText = outputText;
+        this->key = key;
+        this->expectedWord = expectedWord;
+    }
+    Operation *operation;
+    int *alphabetChoice;
+    bool fileInput;
+    FILE *inputFile;
+    FILE *outputFile;
+    TextWindow *inputText;
+    TextWindow *outputText;
+    TextWindow *key;
+    TextWindow *expectedWord;
+};
+
 struct t_ThreadArgs{
+    t_ThreadArgs(){
+        selWindow = NULL;
+        windows[0] = NULL;
+        windows[1] = NULL;
+        windows[2] = NULL;
+        windows[3] = NULL;
+        windows[4] = NULL;
+        windows[5] = NULL;
+        windows[6] = NULL;
+    }
+    t_ThreadArgs(SelWindow *selWindow, TextWindow *input, TextWindow *output, TextWindow *inputFile, TextWindow *outputFile, TextWindow *v_Key, TextWindow *expectedWord){
+        this->selWindow = selWindow;
+        windows[0] = NULL;
+        windows[1] = input;
+        windows[2] = output;
+        windows[3] = inputFile;
+        windows[4] = outputFile;
+        windows[5] = v_Key;
+        windows[6] = expectedWord;
+    }
     SelWindow *selWindow;
     TextWindow *windows[7];
 };
@@ -639,7 +693,7 @@ int main(void){
     ButtonState exportButton = Enabled;
     ButtonState executeButton = Enabled;
     
-    // put into Vigenere struct when possible
+    // Vigenere Menu Variables
     ButtonState V_alphabetButton = Enabled;
     int V_alphabetMenuOption = 0;
     bool V_alphabetMenu_Open = false;
@@ -679,17 +733,11 @@ int main(void){
     char c; // buffer char to read to and from files
     
     // threads
-    t_ThreadArgs tArgs;
-    tArgs.selWindow = &selWindow;
-    tArgs.windows[0] = NULL;
-    tArgs.windows[1] = &input;
-    tArgs.windows[2] = &output;
-    tArgs.windows[3] = &inputFile;
-    tArgs.windows[4] = &outputFile;
-    tArgs.windows[5] = &v_Key;
-    tArgs.windows[6] = &expectedWord;
+    t_ThreadArgs tArgs(&selWindow,&input,&output,&inputFile,&outputFile,&v_Key,&expectedWord);
     pthread_t inputThread;
     pthread_create(&inputThread,NULL,textInput,&tArgs);
+    
+    V_CipherArgs vArgs(&operation,&V_alphabetMenuOption,inFile,outFile,&input,&output,&v_Key,&expectedWord);
     
     // running loop
     while(!WindowShouldClose()){
@@ -803,15 +851,19 @@ int main(void){
                             switch(cipher){
                                 case Vigenere:
                                     outputFile.InputString("_Vigenere_");
+                                    vArgs.fileInput = true;
                                     break;
                                 case Ceasar:
                                     outputFile.InputString("_Ceasar_");
+                                    //cArgs.fileInput = true;
                                     break;
                                 case ZigZag:
                                     outputFile.InputString("_ZigZag_");
+                                    //zArgs.fileInput = true;
                                     break;
                                 case Spiral:
                                     outputFile.InputString("_Spiral_");
+                                    //sArgs.fileInput = true;
                                     break;
                             }
                             switch(operation){
@@ -854,14 +906,13 @@ int main(void){
                     }
                 }
             }
-            if(executeButton==Pressed && mx>=1068 && mx<1220 && my>=276 && my<328)// activate execute button
+            if(executeButton==Pressed && mx>=1068 && mx<1220 && my>=276 && my<328) // activate execute button
                 executeButton = Enabled;
-            if(V_alphabetButton==Pressed && mx>=350 && mx<388 && my>=124 && my<162){// activate vigenere alphabet button
+            if(V_alphabetButton==Pressed && mx>=350 && mx<388 && my>=124 && my<162){ // activate vigenere alphabet button
                 V_alphabetButton = Enabled;
                 V_alphabetMenu_Open = !V_alphabetMenu_Open;
             }
-            // select vigenere alphabet
-            if(V_alphabetMenu_Open && mx>=220 && mx<344 && my>=134 && my<212){
+            if(V_alphabetMenu_Open && mx>=220 && mx<344 && my>=134 && my<212){ // select vigenere alphabet
                 if(my<152){
                     V_alphabetMenuOption = 0;
                     V_alphabetMenu_Open = false;
@@ -916,7 +967,7 @@ int main(void){
             else
                 V_alphabetMenu_OpenOption = 0;
         }
-        if(IsFileDropped()){
+        if(IsFileDropped()){ // file dropped on app
             droppedFiles = LoadDroppedFiles();
             if(droppedFiles.count==1 && mx>=46 && mx<616 && my>=404 && my<684){ // file was dropped into input window // read
                 if(TextLength(droppedFiles.paths[0])<inputFile.capacity && (IsFileExtension(droppedFiles.paths[0], ".txt") || IsFileExtension(droppedFiles.paths[0], ".csv")) && GetFileLength(droppedFiles.paths[0])<2048){
@@ -949,15 +1000,19 @@ int main(void){
                         switch(cipher){
                             case Vigenere:
                                 outputFile.InputString("_Vigenere_");
+                                vArgs.fileInput = true;
                                 break;
                             case Ceasar:
                                 outputFile.InputString("_Ceasar_");
+                                //cArgs.fileInput = true;
                                 break;
                             case ZigZag:
                                 outputFile.InputString("_ZigZag_");
+                                //zArgs.fileInput = true;
                                 break;
                             case Spiral:
                                 outputFile.InputString("_Spiral_");
+                                //sArgs.fileInput = true;
                                 break;
                         }
                         switch(operation){
@@ -1073,6 +1128,33 @@ int main(void){
                 input.DisplayText(&inputText);
                 input.DisplayCharLimit(&inputCharLim);
                 input.textChanged = false;
+                // stop taking file input
+                inputFile.Clear();
+                inputFile.textChanged = true;
+                fclose(inFile);
+                inFile = NULL;
+                outputFile.Clear();
+                outputFile.textChanged = true;
+                fclose(outFile);
+                outFile = NULL;
+                switch(cipher){ // tell the ciphers about this change
+                    case Vigenere:{
+                        vArgs.fileInput = false;
+                        break;
+                    }
+                    case Ceasar:{
+                        //cArgs.fileInput = false;
+                        break;
+                    }
+                    case ZigZag:{
+                        //zArgs.fileInput = false;
+                        break;
+                    }
+                    case Spiral:{
+                        //sArgs.fileInput = false;
+                        break;
+                    }
+                }
             }
             if(inputText[0]=='\0' && selWindow!=Input)
                 DrawText("Type, Drag & Drop, or Paste Text...",input.x,input.y,GLOBALFONTSIZE,LIGHTGRAY);
