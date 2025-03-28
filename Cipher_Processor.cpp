@@ -6,9 +6,7 @@
 #include "raylib.h"
 
 /* TO DO:
- * when word is longer than window, - is placed at end of text, but missing character is not added to new line
- * FIX ALPABET
- * FIX ALPABET DRAWING ORDER (draw over keyword text)
+ * VIGENERE CIPHER
  * display errors for:
     * dragging a file over the wrong location
     * typing too many characters into a text window?
@@ -345,8 +343,7 @@ struct TextWindow{
                 numLines++;
                 // add buffer character to word
                 word[0] = bufferChar;
-                // add character to word
-                word[1] = text[i];
+                wSize++;
             }
         }
         // if we make it here, we found the end of the text and have one last (should be '\0' terminated) word to add
@@ -619,19 +616,19 @@ int main(void){
         gui[16].init(1068,276,152,52,LoadTexture("assets/Execute_Disabled.png"));
         gui[17].init(1068,276,152,52,LoadTexture("assets/Execute_Pressed.png"));
         gui[18].init(60,124,514,38,LoadTexture("assets/ExpectedWord.png"));                 // 18 - expected word
-        gui[19].init(60,130,382,76,LoadTexture("assets/V_ParameterBackground.png"));        // 19 - V - parameter background
-        gui[20].init(330,124,38,38,LoadTexture("assets/V_AlphabetButton_Enabled.png"));     // 20 - V - alphabet button
-        gui[21].init(330,124,38,38,LoadTexture("assets/V_AlphabetButton_Disabled.png"));
-        gui[22].init(330,124,38,38,LoadTexture("assets/V_AlphabetButton_Pressed.png"));
-        gui[23].init(194,124,134,38,LoadTexture("assets/V_AlphabetMenu_Closed_1.png"));     // 23 - V - alphabet menu - selection 1
-        gui[24].init(194,124,134,38,LoadTexture("assets/V_AlphabetMenu_Closed_2.png"));
-        gui[25].init(194,124,134,38,LoadTexture("assets/V_AlphabetMenu_Closed_3.png"));
-        gui[26].init(194,124,134,38,LoadTexture("assets/V_AlphabetMenu_Closed_4.png"));
-        gui[27].init(194,124,134,96,LoadTexture("assets/V_AlphabetMenu_Open_0.png"));       // 27 - V - alphabet menu - open selection 0
-        gui[28].init(194,124,134,96,LoadTexture("assets/V_AlphabetMenu_Open_1.png"));
-        gui[29].init(194,124,134,96,LoadTexture("assets/V_AlphabetMenu_Open_2.png"));
-        gui[30].init(194,124,134,96,LoadTexture("assets/V_AlphabetMenu_Open_3.png"));
-        gui[31].init(194,124,134,96,LoadTexture("assets/V_AlphabetMenu_Open_4.png"));
+        gui[19].init(60,130,402,76,LoadTexture("assets/V_ParameterBackground.png"));        // 19 - V - parameter background
+        gui[20].init(350,124,38,38,LoadTexture("assets/V_AlphabetButton_Enabled.png"));     // 20 - V - alphabet button
+        gui[21].init(350,124,38,38,LoadTexture("assets/V_AlphabetButton_Disabled.png"));
+        gui[22].init(350,124,38,38,LoadTexture("assets/V_AlphabetButton_Pressed.png"));
+        gui[23].init(214,124,134,38,LoadTexture("assets/V_AlphabetMenu_Closed_1.png"));     // 23 - V - alphabet menu - selection 1
+        gui[24].init(214,124,134,38,LoadTexture("assets/V_AlphabetMenu_Closed_2.png"));
+        gui[25].init(214,124,134,38,LoadTexture("assets/V_AlphabetMenu_Closed_3.png"));
+        gui[26].init(214,124,134,38,LoadTexture("assets/V_AlphabetMenu_Closed_4.png"));
+        gui[27].init(214,124,134,96,LoadTexture("assets/V_AlphabetMenu_Open_0.png"));       // 27 - V - alphabet menu - open selection 0
+        gui[28].init(214,124,134,96,LoadTexture("assets/V_AlphabetMenu_Open_1.png"));
+        gui[29].init(214,124,134,96,LoadTexture("assets/V_AlphabetMenu_Open_2.png"));
+        gui[30].init(214,124,134,96,LoadTexture("assets/V_AlphabetMenu_Open_3.png"));
+        gui[31].init(214,124,134,96,LoadTexture("assets/V_AlphabetMenu_Open_4.png"));
         gui[32].init(60,130,64,24,LoadTexture("assets/Info.png"));                          // LAST ITEM - Info background
     }
     Cipher cipher = Vigenere;
@@ -662,7 +659,7 @@ int main(void){
     TextWindow outputFile(256,8,908,378,172,15);
     char *outputFileText = (char *)malloc(sizeof(char[outputFile.capacity*2+1]));
     char *outputFileCharLim = (char *)malloc(sizeof(char[outputFile.charLimCapacity]));
-    TextWindow v_Key(128,8,205,180,170,15);
+    TextWindow v_Key(128,8,225,180,170,15);
     char *v_KeyText = (char *)malloc(sizeof(char[v_Key.capacity*2+1]));
     char *v_KeyCharLim = (char *)malloc(sizeof(char[v_Key.charLimCapacity]));
     TextWindow expectedWord(128,8,338,136,170,15);
@@ -714,7 +711,7 @@ int main(void){
                 executeButton = Pressed;
                 lastPressed = &executeButton;
             }
-            if(V_alphabetButton==Enabled && mx>=330 && mx<368 && my>=124 && my<162){ // toggle vigenere alphabet button
+            if(V_alphabetButton==Enabled && mx>=350 && mx<388 && my>=124 && my<162){ // toggle vigenere alphabet button
                 V_alphabetButton = Pressed;
                 lastPressed = &V_alphabetButton;
             }
@@ -751,7 +748,7 @@ int main(void){
             if(mx>=894 && mx<1150 && my>=364 && my<404){ // select outputFile window
                 selWindow = OutputFile;
             }
-            if(mx>=192 && mx<442 && my>=166 && my<206 && cipher==Vigenere && operation<Crack){ // select V_Key window
+            if(mx>=212 && mx<462 && my>=166 && my<206 && cipher==Vigenere && operation<Crack){ // select V_Key window
                 selWindow = V_Key;
             }
             if(mx>=224 && mx<574 && my>=122 && my<162 && operation==Crack){ // select ExpectedWord window
@@ -759,7 +756,7 @@ int main(void){
             }
             
             // close alphabet menu on click away
-            if(V_alphabetMenu_Open && !(mx>=330 && mx<368 && my>=124 && my<162) && !(mx>=200 && mx<324 && my>=134 && my<212))
+            if(V_alphabetMenu_Open && !(mx>=350 && mx<388 && my>=124 && my<162) && !(mx>=200 && mx<324 && my>=134 && my<212))
                 V_alphabetMenu_Open = false;
             // update execute button state on click
             if(cipher!=Vigenere)
@@ -859,12 +856,12 @@ int main(void){
             }
             if(executeButton==Pressed && mx>=1068 && mx<1220 && my>=276 && my<328)// activate execute button
                 executeButton = Enabled;
-            if(V_alphabetButton==Pressed && mx>=330 && mx<368 && my>=124 && my<162){// activate vigenere alphabet button
+            if(V_alphabetButton==Pressed && mx>=350 && mx<388 && my>=124 && my<162){// activate vigenere alphabet button
                 V_alphabetButton = Enabled;
                 V_alphabetMenu_Open = !V_alphabetMenu_Open;
             }
             // select vigenere alphabet
-            if(V_alphabetMenu_Open && mx>=200 && mx<324 && my>=134 && my<212){
+            if(V_alphabetMenu_Open && mx>=220 && mx<344 && my>=134 && my<212){
                 if(my<152){
                     V_alphabetMenuOption = 0;
                     V_alphabetMenu_Open = false;
@@ -892,7 +889,7 @@ int main(void){
                 exportButton = Enabled;
             if(executeButton==Pressed && !(mx>=1068 && mx<1220 && my>=276 && my<328)) // release execute button
                 executeButton = Enabled;
-            if(V_alphabetButton==Pressed && !(mx>=330 && mx<368 && my>=124 && my<162)) // release vigenere alphabet button
+            if(V_alphabetButton==Pressed && !(mx>=350 && mx<388 && my>=124 && my<162)) // release vigenere alphabet button
                 V_alphabetButton = Enabled;
             // reclick buttons if rehovered
             if(importButton==Enabled && lastPressed== &importButton && mx>=536 && mx<616 && my>=366 && my<404) // release import button
@@ -901,12 +898,12 @@ int main(void){
                 exportButton = Pressed;
             if(executeButton==Enabled && lastPressed== &executeButton && mx>=1068 && mx<1220 && my>=276 && my<328) // release execute button
                 executeButton = Pressed;
-            if(V_alphabetButton==Enabled && lastPressed== &V_alphabetButton && mx>=330 && mx<368 && my>=124 && my<162) // release vigenere alphabet button
+            if(V_alphabetButton==Enabled && lastPressed== &V_alphabetButton && mx>=350 && mx<388 && my>=124 && my<162) // release vigenere alphabet button
                 V_alphabetButton = Pressed;
         }
         if(IsMouseButtonUp(0)){ // hover over menu options
             // hover over vigenere alphabet menu options
-            if(V_alphabetMenu_Open && mx>=200 && mx<324 && my>=134 && my<212){
+            if(V_alphabetMenu_Open && mx>=220 && mx<344 && my>=134 && my<212){
                 if(my<152)
                     V_alphabetMenu_OpenOption = 1;
                 if(my>=152 && my<172)
@@ -1043,6 +1040,20 @@ int main(void){
                         break;
                     }
                     case 27:{ // Vigenere Alphabet Menu Open
+                        // draw vigenere key word here to prevent drawing order error
+                        if(cipher==Vigenere && operation<Crack){
+                            if(v_Key.textChanged){
+                                v_Key.DisplayText(&v_KeyText);
+                                v_Key.DisplayCharLimit(&v_KeyCharLim);
+                                v_Key.textChanged = false;
+                            }
+                            if(v_KeyText[0]=='\0' && selWindow!=V_Key)
+                                DrawText("Type or Paste Text...",v_Key.x,v_Key.y,GLOBALFONTSIZE,(selWindow==V_Key?BLACK:LIGHTGRAY));
+                            else
+                                DrawText(v_KeyText,v_Key.x,v_Key.y,GLOBALFONTSIZE,(selWindow==V_Key?BLACK:LIGHTGRAY));
+                            if(selWindow==V_Key)
+                                DrawText(v_KeyCharLim,v_Key.x+v_Key.width+MeasureText("128/128",GLOBALFONTSIZE)-MeasureText(v_KeyCharLim,GLOBALFONTSIZE),v_Key.y,GLOBALFONTSIZE,(v_Key.size==v_Key.capacity?RED:SKYBLUE));
+                        }
                         if(cipher==Vigenere && operation<Crack && V_alphabetMenu_Open)
                             DrawTextureV(gui[i+V_alphabetMenu_OpenOption].tex,(Vector2){gui[i+V_alphabetMenu_OpenOption].x,gui[i+V_alphabetMenu_OpenOption].y},WHITE);
                         i = 31;
@@ -1106,19 +1117,7 @@ int main(void){
             if(selWindow==OutputFile)
                 DrawText(outputFileCharLim,outputFile.x+outputFile.width+MeasureText("256/256",GLOBALFONTSIZE)-MeasureText(outputFileCharLim,GLOBALFONTSIZE),outputFile.y,GLOBALFONTSIZE,(outputFile.size==outputFile.capacity?RED:SKYBLUE));
             // vigenere key
-            if(cipher==Vigenere && operation<Crack){
-                if(v_Key.textChanged){
-                    v_Key.DisplayText(&v_KeyText);
-                    v_Key.DisplayCharLimit(&v_KeyCharLim);
-                    v_Key.textChanged = false;
-                }
-                if(v_KeyText[0]=='\0' && selWindow!=V_Key)
-                    DrawText("Type or Paste Text...",v_Key.x,v_Key.y,GLOBALFONTSIZE,(selWindow==V_Key?BLACK:LIGHTGRAY));
-                else
-                    DrawText(v_KeyText,v_Key.x,v_Key.y,GLOBALFONTSIZE,(selWindow==V_Key?BLACK:LIGHTGRAY));
-                if(selWindow==V_Key)
-                    DrawText(v_KeyCharLim,v_Key.x+v_Key.width+MeasureText("128/128",GLOBALFONTSIZE)-MeasureText(v_KeyCharLim,GLOBALFONTSIZE),v_Key.y,GLOBALFONTSIZE,(v_Key.size==v_Key.capacity?RED:SKYBLUE));
-            }
+                // drawn in GUI loop to fix order issue
             // expected word
             if(operation==Crack){
                 if(expectedWord.textChanged){
@@ -1133,7 +1132,6 @@ int main(void){
                 if(selWindow==ExpectedWord)
                     DrawText(expectedWordCharLim,expectedWord.x+expectedWord.width+MeasureText("128/128",GLOBALFONTSIZE)-MeasureText(expectedWordCharLim,GLOBALFONTSIZE),expectedWord.y,GLOBALFONTSIZE,(expectedWord.size==expectedWord.capacity?RED:SKYBLUE));
             }
-            
             // draw info text
             if(operation==Info){
                 SetTextLineSpacing(GLOBALFONTSIZE*1.5);
