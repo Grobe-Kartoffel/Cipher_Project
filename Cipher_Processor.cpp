@@ -6,7 +6,11 @@
 #include "raylib.h"
 
 /* TO DO:
- * VIGENERE CIPHER FUNCTION
+ * VIGENERE CIPHER
+    * cipher only outputs the first letter of the alphabet
+    * drag and drop does not register file path
+    * drag and drop does not generate export path
+    * program does not register that it should read file input after file drop
  * display errors for:
     * dragging a file over the wrong location
     * typing too many characters into a text window?
@@ -489,11 +493,22 @@ struct TextWindow{
     }
 };
 
+int findChar(char c, char *alphabet){
+    int i = 0;
+    while(alphabet[i]!='/0'){
+        if(c = alphabet[i])
+            return i;
+        i++;
+    }
+    return -1;
+}
+
 struct V_CipherArgs{
     V_CipherArgs(){
+        fileInput = false;
+        running = false;
         operation = NULL;
         alphabetChoice = NULL;
-        fileInput = false;
         inputFile = NULL;
         outputFile = NULL;
         inputText = NULL;
@@ -502,9 +517,10 @@ struct V_CipherArgs{
         expectedWord = NULL;
     }
     V_CipherArgs(Operation *operation, int *alphabetChoice, FILE *inputFile, FILE *outputFile, TextWindow *inputText, TextWindow *outputText, TextWindow *key, TextWindow *expectedWord){
+        this->fileInput = false;
+        this->running = false;
         this->operation = operation;
         this->alphabetChoice = alphabetChoice;
-        this->fileInput = false;
         this->inputFile = inputFile;
         this->outputFile = outputFile;
         this->inputText = inputText;
@@ -512,9 +528,10 @@ struct V_CipherArgs{
         this->key = key;
         this->expectedWord = expectedWord;
     }
+    bool fileInput;
+    bool running;
     Operation *operation;
     int *alphabetChoice;
-    bool fileInput;
     FILE *inputFile;
     FILE *outputFile;
     TextWindow *inputText;
@@ -522,7 +539,6 @@ struct V_CipherArgs{
     TextWindow *key;
     TextWindow *expectedWord;
 };
-
 struct t_ThreadArgs{
     t_ThreadArgs(){
         selWindow = NULL;
@@ -547,19 +563,23 @@ struct t_ThreadArgs{
     SelWindow *selWindow;
     TextWindow *windows[7];
 };
+
 void *textInput(void *input){ // text input thread
+    t_ThreadArgs *t_input = (t_ThreadArgs *)input;
     char key;
     const char *pText;
     int fKey;
     double time = -1.0;
     bool holdBack = false;
+    bool holdTab = false;
+    bool holdEnter = false;
     bool canCopy = true;
     bool canPaste = true;
     
     TextWindow *window = NULL;
     // CLEAR ALL TEXT WINDOWS
     for(int i = 1; i<7; i++){
-        window = ((t_ThreadArgs *)input)->windows[i];
+        window = t_input->windows[i];
         for(int j = 0; j<window->capacity; j++){
             window->text[j] = '\0';
         }
@@ -568,9 +588,9 @@ void *textInput(void *input){ // text input thread
     }
     
 	while(!WindowShouldClose()){
-        if( *( ((t_ThreadArgs *)input)->selWindow)==None )
+        if( *(t_input->selWindow)==None )
             continue;
-        window = ((t_ThreadArgs *)input)->windows[*( ((t_ThreadArgs *)input)->selWindow)];
+        window = t_input->windows[*(t_input->selWindow)];
         // copy
         if(canCopy && (IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)) && IsKeyDown(KEY_C)){
             SetClipboardText(window->text);
@@ -608,11 +628,35 @@ void *textInput(void *input){ // text input thread
             window->textChanged = true;
             continue;
         }
-        // reset backspace
-        if(!IsKeyDown(KEY_BACKSPACE)){
+        
+        // unsure if these keys are necessary
+        //// enter
+        //if(IsKeyDown(KEY_ENTER) && GetTime()>(time+(holdEnter?1.0/30.0:1.0/2.0) ) ){
+        //    window->InputKey('\n');
+        //    if(time>0) // time is less than zero before first press
+        //        holdEnter = true;
+        //    time = GetTime();
+        //    window->textChanged = true;
+        //    continue;
+        //}
+        //// tab
+        //if(IsKeyDown(KEY_TAB) && window->size>0 && GetTime()>(time+(holdTab?1.0/30.0:1.0/2.0) ) ){
+        //    window->InputKey('\t');
+        //    if(time>0) // time is less than zero before first press
+        //        holdTab = true;
+        //    time = GetTime();
+        //    window->textChanged = true;
+        //    continue;
+        //}
+        
+        // reset backspace, enter, and tab
+        if(!IsKeyDown(KEY_BACKSPACE) && !IsKeyDown(KEY_ENTER) && !IsKeyDown(KEY_TAB)){
             holdBack = false;
+            holdEnter = false;
+            holdTab = false;
             time = -1.0;
         }
+        
         // delete
         fKey = GetKeyPressed();
         if(fKey==KEY_DELETE){
@@ -632,6 +676,81 @@ void *textInput(void *input){ // text input thread
         }
     }
 	return NULL;
+}
+void *VigenereCipher(void *input){
+    V_CipherArgs *V_input = (V_CipherArgs *)input;
+    if( V_input->running ) // ensure thread only runs one at a time
+        return NULL;
+    V_input->running = true;
+    
+    char alphabets[][53] =
+    {"AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz",
+    "aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ",
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"};
+    char *alphabet = alphabets[*(V_input->alphabetChoice)];
+    
+    char fileText[2048];
+    char *textChar = fileText;
+    char *keyChar = V_input->key->text;
+    char *outChar = fileText;
+    int textIndex, keyIndex;
+    
+    if(V_input->fileInput){ // fill fileText with the file text // set textChar to point to that text
+        rewind(V_input->inputFile);
+        do{
+            *textChar = fgetc(V_input->inputFile);
+            textChar++;
+        } while( *textChar!=EOF );
+        textChar = fileText;
+    }
+    else{ // set textChar to point to text
+        textChar = V_input->inputText->text;
+    }
+    
+    // right now, we have a char pointer to our plain text and our key, and our alphabet at the ready
+    switch( *(V_input->operation) ){
+        case Encrypt:{
+            while(*textChar!='\0' && *textChar!=EOF){
+                textIndex = findChar(*textChar,alphabet);
+                keyIndex = findChar(*keyChar,alphabet);
+                if(textIndex<0 || keyIndex<0)
+                    *outChar = *textChar;
+                else
+                    *outChar = alphabet[(textIndex+keyIndex)%52];
+                
+                // output
+                if(V_input->fileInput){
+                    fputc(*outChar,V_input->outputFile);
+                    V_input->outputText->Clear();
+                    V_input->outputText->InputString("Vigenere Cipher - ");
+                    V_input->outputText->InputNum(textIndex+1);
+                    V_input->outputText->InputString(" Characters Encrytped");
+                    V_input->outputText->textChanged = true;
+                }
+                else{
+                    V_input->outputText->InputKey(*outChar);
+                    V_input->outputText->textChanged = true;
+                }
+                
+                // increment pointers
+                outChar++;
+                textChar++;
+                keyChar++;
+                if(*keyChar=='\0') // wrap key if reach end
+                    keyChar = V_input->key->text;
+            }
+            break;
+        }
+        case Decrypt:{
+            break;
+        }
+        case Crack:{
+            break;
+        }
+    }
+    V_input->running = false;
+    return NULL;
 }
 
 int main(void){
@@ -737,7 +856,8 @@ int main(void){
     pthread_t inputThread;
     pthread_create(&inputThread,NULL,textInput,&tArgs);
     
-    V_CipherArgs vArgs(&operation,&V_alphabetMenuOption,inFile,outFile,&input,&output,&v_Key,&expectedWord);
+    //V_CipherArgs vArgs(&operation,&V_alphabetMenuOption,inFile,outFile,&input,&output,&v_Key,&expectedWord);
+    //pthread_t vigenereThread;
     
     // running loop
     while(!WindowShouldClose()){
@@ -851,7 +971,7 @@ int main(void){
                             switch(cipher){
                                 case Vigenere:
                                     outputFile.InputString("_Vigenere_");
-                                    vArgs.fileInput = true;
+                                    //vArgs.fileInput = true;
                                     break;
                                 case Ceasar:
                                     outputFile.InputString("_Ceasar_");
@@ -906,8 +1026,10 @@ int main(void){
                     }
                 }
             }
-            if(executeButton==Pressed && mx>=1068 && mx<1220 && my>=276 && my<328) // activate execute button
+            if(executeButton==Pressed && mx>=1068 && mx<1220 && my>=276 && my<328){ // activate execute button
                 executeButton = Enabled;
+                //pthread_create(&vigenereThread,NULL,VigenereCipher,&vArgs);
+            }
             if(V_alphabetButton==Pressed && mx>=350 && mx<388 && my>=124 && my<162){ // activate vigenere alphabet button
                 V_alphabetButton = Enabled;
                 V_alphabetMenu_Open = !V_alphabetMenu_Open;
@@ -1000,7 +1122,7 @@ int main(void){
                         switch(cipher){
                             case Vigenere:
                                 outputFile.InputString("_Vigenere_");
-                                vArgs.fileInput = true;
+                                //vArgs.fileInput = true;
                                 break;
                             case Ceasar:
                                 outputFile.InputString("_Ceasar_");
@@ -1034,7 +1156,9 @@ int main(void){
             }
             UnloadDroppedFiles(droppedFiles);
         }
-        
+        //if(!vArgs.running){
+        //    pthread_join(vigenereThread,NULL);
+        //}
         // draw
         BeginDrawing();{
             ClearBackground(WHITE);
@@ -1139,7 +1263,7 @@ int main(void){
                 outFile = NULL;
                 switch(cipher){ // tell the ciphers about this change
                     case Vigenere:{
-                        vArgs.fileInput = false;
+                        //vArgs.fileInput = false;
                         break;
                     }
                     case Ceasar:{
