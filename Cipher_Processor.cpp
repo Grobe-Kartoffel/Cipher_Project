@@ -6,8 +6,11 @@
 #include "raylib.h"
 
 /* TO DO:
+ * only open and work with files when necessary
+    * when inputting a file, open, read, close
+    * when processing text, pass the file paths needed
+       * open files when needed, close when done
  * VIGENERE CIPHER
-    * decryption
     * cracking
  * display errors for:
     * dragging a file over the wrong location
@@ -17,11 +20,13 @@
     * importing a file that is too long
     * file could not be imported for any other reason
     * output path could not be generated
-    * output path with the wrong extension
-    * could not open export file
-    * could not export for any other reason
+    * output path not valid
+    * could not open output file
+    * could not output to file for any other reason
+    * cannot run processor because another one is running
  * display messages for:
-    * successful file export
+    * successful file output
+    * processing complete
  */
 
 int GLOBALFONTSIZE = 15;
@@ -744,10 +749,45 @@ void *VigenereCipher(void *input){
                 if(*keyChar=='\0') // wrap key if reach end
                     keyChar = V_input->key->text;
             }
-            fflush(*(V_input->outputFile));
+            if(V_input->fileInput)
+                fflush(*(V_input->outputFile));
             break;
         }
         case Decrypt:{
+            V_input->outputText->Clear();
+            V_input->outputText->textChanged = true;
+            while(*textChar!='\0'){
+                textIndex = findChar(*textChar,alphabet);
+                keyIndex = findChar(*keyChar,alphabet);
+                if(textIndex<0 || keyIndex<0)
+                    *outChar = *textChar;
+                else
+                    *outChar = alphabet[(textIndex-keyIndex+52)%52];
+                
+                // output
+                if(V_input->fileInput){
+                    fputc(*outChar,*(V_input->outputFile));
+                    V_input->outputText->Clear();
+                    V_input->outputText->InputString("Vigenere Cipher - ");
+                    V_input->outputText->InputNum(charCounter);
+                    V_input->outputText->InputString(" Characters Encrytped");
+                    V_input->outputText->textChanged = true;
+                }
+                else{
+                    V_input->outputText->InputKey(*outChar);
+                    V_input->outputText->textChanged = true;
+                }
+                
+                // increment pointers
+                outChar++;
+                textChar++;
+                keyChar++;
+                charCounter++;
+                if(*keyChar=='\0') // wrap key if reach end
+                    keyChar = V_input->key->text;
+            }
+            if(V_input->fileInput)
+                fflush(*(V_input->outputFile));
             break;
         }
         case Crack:{
