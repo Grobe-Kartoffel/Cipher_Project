@@ -7,10 +7,8 @@
 
 /* TO DO:
  * VIGENERE CIPHER
-    * cipher only outputs the first letter of the alphabet
-    * drag and drop does not register file path
-    * drag and drop does not generate export path
-    * program does not register that it should read file input after file drop
+    * decryption
+    * cracking
  * display errors for:
     * dragging a file over the wrong location
     * typing too many characters into a text window?
@@ -110,11 +108,13 @@ struct TextWindow{
     }
     bool InputNum(const int n){
         int num = n;
+        char buffer;
         if(num<0){
             if(!InputKey('-'))
                 return false;
             num *= -1;
         }
+        //return true;
         int start = size;
         while(num>9){ // input all but last digit in reverse
             if(!InputKey('0'+(num%10))){ // if we fail to input a key
@@ -134,9 +134,9 @@ struct TextWindow{
         // reverse digits
         int end = size-1;
         while(start<end){
-            text[start] = text[start]+text[end];
-            text[end] = text[start]-text[end];
-            text[start] = text[start]-text[end];
+            buffer = text[start];
+            text[start] = text[end];
+            text[end] = buffer;
             start++;
             end--;
         }
@@ -495,50 +495,14 @@ struct TextWindow{
 
 int findChar(char c, char *alphabet){
     int i = 0;
-    while(alphabet[i]!='/0'){
-        if(c = alphabet[i])
+    while(alphabet[i]!='\0'){
+        if(c==alphabet[i])
             return i;
         i++;
     }
     return -1;
 }
 
-struct V_CipherArgs{
-    V_CipherArgs(){
-        fileInput = false;
-        running = false;
-        operation = NULL;
-        alphabetChoice = NULL;
-        inputFile = NULL;
-        outputFile = NULL;
-        inputText = NULL;
-        outputText = NULL;
-        key = NULL;
-        expectedWord = NULL;
-    }
-    V_CipherArgs(Operation *operation, int *alphabetChoice, FILE *inputFile, FILE *outputFile, TextWindow *inputText, TextWindow *outputText, TextWindow *key, TextWindow *expectedWord){
-        this->fileInput = false;
-        this->running = false;
-        this->operation = operation;
-        this->alphabetChoice = alphabetChoice;
-        this->inputFile = inputFile;
-        this->outputFile = outputFile;
-        this->inputText = inputText;
-        this->outputText = outputText;
-        this->key = key;
-        this->expectedWord = expectedWord;
-    }
-    bool fileInput;
-    bool running;
-    Operation *operation;
-    int *alphabetChoice;
-    FILE *inputFile;
-    FILE *outputFile;
-    TextWindow *inputText;
-    TextWindow *outputText;
-    TextWindow *key;
-    TextWindow *expectedWord;
-};
 struct t_ThreadArgs{
     t_ThreadArgs(){
         selWindow = NULL;
@@ -562,6 +526,42 @@ struct t_ThreadArgs{
     }
     SelWindow *selWindow;
     TextWindow *windows[7];
+};
+struct V_CipherArgs{
+    V_CipherArgs(){
+        fileInput = false;
+        running = false;
+        operation = NULL;
+        alphabetChoice = NULL;
+        inputFile = NULL;
+        outputFile = NULL;
+        inputText = NULL;
+        outputText = NULL;
+        key = NULL;
+        expectedWord = NULL;
+    }
+    V_CipherArgs(Operation *operation, int *alphabetChoice, FILE **inputFile, FILE **outputFile, TextWindow *inputText, TextWindow *outputText, TextWindow *key, TextWindow *expectedWord){
+        this->fileInput = false;
+        this->running = false;
+        this->operation = operation;
+        this->alphabetChoice = alphabetChoice;
+        this->inputFile = inputFile;
+        this->outputFile = outputFile;
+        this->inputText = inputText;
+        this->outputText = outputText;
+        this->key = key;
+        this->expectedWord = expectedWord;
+    }
+    bool fileInput;
+    bool running;
+    Operation *operation;
+    int *alphabetChoice;
+    FILE **inputFile;
+    FILE **outputFile;
+    TextWindow *inputText;
+    TextWindow *outputText;
+    TextWindow *key;
+    TextWindow *expectedWord;
 };
 
 void *textInput(void *input){ // text input thread
@@ -695,13 +695,14 @@ void *VigenereCipher(void *input){
     char *keyChar = V_input->key->text;
     char *outChar = fileText;
     int textIndex, keyIndex;
+    int charCounter = 1;
     
     if(V_input->fileInput){ // fill fileText with the file text // set textChar to point to that text
-        rewind(V_input->inputFile);
+        rewind(*(V_input->inputFile));
         do{
-            *textChar = fgetc(V_input->inputFile);
-            textChar++;
-        } while( *textChar!=EOF );
+            *textChar = fgetc(*(V_input->inputFile));
+        } while( *(textChar++)!=EOF );
+        *(--textChar) = '\0';
         textChar = fileText;
     }
     else{ // set textChar to point to text
@@ -711,7 +712,9 @@ void *VigenereCipher(void *input){
     // right now, we have a char pointer to our plain text and our key, and our alphabet at the ready
     switch( *(V_input->operation) ){
         case Encrypt:{
-            while(*textChar!='\0' && *textChar!=EOF){
+            V_input->outputText->Clear();
+            V_input->outputText->textChanged = true;
+            while(*textChar!='\0'){
                 textIndex = findChar(*textChar,alphabet);
                 keyIndex = findChar(*keyChar,alphabet);
                 if(textIndex<0 || keyIndex<0)
@@ -721,10 +724,10 @@ void *VigenereCipher(void *input){
                 
                 // output
                 if(V_input->fileInput){
-                    fputc(*outChar,V_input->outputFile);
+                    fputc(*outChar,*(V_input->outputFile));
                     V_input->outputText->Clear();
                     V_input->outputText->InputString("Vigenere Cipher - ");
-                    V_input->outputText->InputNum(textIndex+1);
+                    V_input->outputText->InputNum(charCounter);
                     V_input->outputText->InputString(" Characters Encrytped");
                     V_input->outputText->textChanged = true;
                 }
@@ -737,9 +740,11 @@ void *VigenereCipher(void *input){
                 outChar++;
                 textChar++;
                 keyChar++;
+                charCounter++;
                 if(*keyChar=='\0') // wrap key if reach end
                     keyChar = V_input->key->text;
             }
+            fflush(*(V_input->outputFile));
             break;
         }
         case Decrypt:{
@@ -849,6 +854,7 @@ int main(void){
     FilePathList droppedFiles; // list of dragged&dropped files
     FILE *inFile = NULL; // input file pointer
     FILE *outFile = NULL; // output file pointer
+    bool inputFileFrame = false;
     char c; // buffer char to read to and from files
     
     // threads
@@ -856,8 +862,8 @@ int main(void){
     pthread_t inputThread;
     pthread_create(&inputThread,NULL,textInput,&tArgs);
     
-    //V_CipherArgs vArgs(&operation,&V_alphabetMenuOption,inFile,outFile,&input,&output,&v_Key,&expectedWord);
-    //pthread_t vigenereThread;
+    V_CipherArgs vArgs(&operation,&V_alphabetMenuOption,&inFile,&outFile,&input,&output,&v_Key,&expectedWord);
+    pthread_t vigenereThread;
     
     // running loop
     while(!WindowShouldClose()){
@@ -943,65 +949,83 @@ int main(void){
                         inFile = NULL;
                     }
                     inFile = fopen(inputFile.text,"r");
-                    if(inFile!=NULL){
-                        if(GetFileLength(inputFile.text)>=2048){
-                            fclose(inFile);
-                            inFile = NULL;
-                        }
-                        else{
+                    if(inFile!=NULL && GetFileLength(inputFile.text)<2048){
+                        // input
+                        c = fgetc(inFile);
+                        input.Clear();
+                        while(c!=EOF){
+                            if( input.size==input.capacity-3 && GetFileLength(inputFile.text)>=input.capacity ){ // if there's no room left and text is too long to display
+                                input.InputString("...");
+                                break;
+                            }
+                            if(!input.InputKey(c))
+                                break;
                             c = fgetc(inFile);
-                            input.Clear();
-                            while(c!=EOF){
-                                if( input.size==input.capacity-3 && GetFileLength(inputFile.text)>=input.capacity ){ // if there's no room left and text is too long to display
-                                    input.InputString("...");
-                                    break;
-                                }
-                                if(!input.InputKey(c))
-                                    break;
-                                c = fgetc(inFile);
-                            }
-                            input.textChanged = true;
-                            outputFile.Clear();
-                            outputFile.InputNum(GetFileLength(inputFile.text));
-                            outputFile.textChanged = true;
-                            
-                            // create output file name
-                            outputFile.Clear();
-                            outputFile.InputString(GetFileNameWithoutExt(inputFile.text));
-                            switch(cipher){
-                                case Vigenere:
-                                    outputFile.InputString("_Vigenere_");
-                                    //vArgs.fileInput = true;
-                                    break;
-                                case Ceasar:
-                                    outputFile.InputString("_Ceasar_");
-                                    //cArgs.fileInput = true;
-                                    break;
-                                case ZigZag:
-                                    outputFile.InputString("_ZigZag_");
-                                    //zArgs.fileInput = true;
-                                    break;
-                                case Spiral:
-                                    outputFile.InputString("_Spiral_");
-                                    //sArgs.fileInput = true;
-                                    break;
-                            }
-                            switch(operation){
-                                case Encrypt:
-                                    outputFile.InputString("Encryption.txt");
-                                    break;
-                                case Decrypt:
-                                    outputFile.InputString("Decryption.txt");
-                                    break;
-                                case Crack:
-                                    outputFile.InputString("Cracked.txt");
-                                    break;
-                            }
-                            if(!IsFileExtension(outputFile.text,".txt")) // verify the whole name could be printed
-                                outputFile.Clear();
-                            outputFile.textChanged = true;
                         }
+                        input.textChanged = true;
+                        outputFile.Clear();
+                        outputFile.InputNum(GetFileLength(inputFile.text));
+                        outputFile.textChanged = true;
+                        
+                        // create output file name
+                        outputFile.Clear();
+                        outputFile.InputString(GetFileNameWithoutExt(inputFile.text));
+                        switch(cipher){
+                            case Vigenere:
+                                outputFile.InputString("_Vigenere_");
+                                vArgs.fileInput = true;
+                                break;
+                            case Ceasar:
+                                outputFile.InputString("_Ceasar_");
+                                //cArgs.fileInput = true;
+                                break;
+                            case ZigZag:
+                                outputFile.InputString("_ZigZag_");
+                                //zArgs.fileInput = true;
+                                break;
+                            case Spiral:
+                                outputFile.InputString("_Spiral_");
+                                //sArgs.fileInput = true;
+                                break;
+                        }
+                        switch(operation){
+                            case Encrypt:
+                                outputFile.InputString("Encryption.txt");
+                                break;
+                            case Decrypt:
+                                outputFile.InputString("Decryption.txt");
+                                break;
+                            case Crack:
+                                outputFile.InputString("Cracked.txt");
+                                break;
+                        }
+                        if(!IsFileExtension(outputFile.text,".txt")) // verify the whole name could be printed
+                            outputFile.Clear();
+                        outputFile.textChanged = true;
+                        
+                        // load output file
+                        if(outFile!=NULL){
+                            fflush(outFile);
+                            fclose(outFile);
+                            outFile = NULL;
+                        }
+                        outFile = fopen(outputFile.text,"w");
+                        if(outFile==NULL)
+                            outputFile.Clear();
+                        
+                        // tell program not to clear input file because of text update this frame
+                        inputFileFrame = true;
                     }
+                    else{ // failed to open input file, clear file input
+                        // these two variables will cause later code to clear everything for us
+                        input.textChanged = true;
+                        inputFileFrame = false;
+                    }
+                }
+                else{ // failed to open input file, clear file input
+                    // these two variables will cause later code to clear everything for us
+                    input.textChanged = true;
+                    inputFileFrame = false;
                 }
             }
             if(exportButton==Pressed && mx>=1152 && mx<1232 && my>=366 && my<404){ // activate export button
@@ -1028,7 +1052,8 @@ int main(void){
             }
             if(executeButton==Pressed && mx>=1068 && mx<1220 && my>=276 && my<328){ // activate execute button
                 executeButton = Enabled;
-                //pthread_create(&vigenereThread,NULL,VigenereCipher,&vArgs);
+                if(cipher==Vigenere && !vArgs.running)
+                    pthread_create(&vigenereThread,NULL,VigenereCipher,&vArgs);
             }
             if(V_alphabetButton==Pressed && mx>=350 && mx<388 && my>=124 && my<162){ // activate vigenere alphabet button
                 V_alphabetButton = Enabled;
@@ -1093,16 +1118,18 @@ int main(void){
             droppedFiles = LoadDroppedFiles();
             if(droppedFiles.count==1 && mx>=46 && mx<616 && my>=404 && my<684){ // file was dropped into input window // read
                 if(TextLength(droppedFiles.paths[0])<inputFile.capacity && (IsFileExtension(droppedFiles.paths[0], ".txt") || IsFileExtension(droppedFiles.paths[0], ".csv")) && GetFileLength(droppedFiles.paths[0])<2048){
-                    inputFile.Clear();
-                    inputFile.InputString(droppedFiles.paths[0]);
-                    inputFile.textChanged = true;
-                    // input file
                     if(inFile!=NULL){
                         fclose(inFile);
                         inFile = NULL;
                     }
                     inFile = fopen(droppedFiles.paths[0],"r");
                     if(inFile!=NULL){
+                        // grab input file path
+                        inputFile.Clear();
+                        inputFile.InputString(droppedFiles.paths[0]);
+                        inputFile.textChanged = true;
+                        
+                        // input file
                         c = fgetc(inFile);
                         input.Clear();
                         while(c!=EOF){
@@ -1122,7 +1149,7 @@ int main(void){
                         switch(cipher){
                             case Vigenere:
                                 outputFile.InputString("_Vigenere_");
-                                //vArgs.fileInput = true;
+                                vArgs.fileInput = true;
                                 break;
                             case Ceasar:
                                 outputFile.InputString("_Ceasar_");
@@ -1151,14 +1178,38 @@ int main(void){
                         if(!IsFileExtension(outputFile.text,".txt")) // verify the whole name could be printed
                             outputFile.Clear();
                         outputFile.textChanged = true;
+                        
+                        // load output file
+                        if(outFile!=NULL){
+                            fflush(outFile);
+                            fclose(outFile);
+                            outFile = NULL;
+                        }
+                        outFile = fopen(outputFile.text,"w");
+                        if(outFile==NULL)
+                            outputFile.Clear();
+                        
+                        // tell program not to clear input file because of text update this frame
+                        inputFileFrame = true;
+                    }
+                    else{ // new file failed to open, reopen file from old path
+                        if(inputFile.size>=5 && (IsFileExtension(inputFile.text, ".txt") || IsFileExtension(inputFile.text, ".csv")) ){
+                            inFile = fopen(inputFile.text,"r");
+                            if(inFile==NULL || GetFileLength(inputFile.text)>=2048){
+                                // old file path couldn't be opened, clear file path
+                                // these two variables will cause later code to clear everything for us
+                                input.textChanged = true;
+                                inputFileFrame = false;
+                            }
+                        }
                     }
                 }
             }
             UnloadDroppedFiles(droppedFiles);
         }
-        //if(!vArgs.running){
-        //    pthread_join(vigenereThread,NULL);
-        //}
+        if(!vArgs.running){
+            pthread_join(vigenereThread,NULL);
+        }
         // draw
         BeginDrawing();{
             ClearBackground(WHITE);
@@ -1245,41 +1296,45 @@ int main(void){
                     }
                 }
             }
-            
+           
             // draw text windows
             // input
+            // abandon file input if input text is changed
+            // needs additional flag to know that this didn't happen because of loading a file
             if(input.textChanged){
                 input.DisplayText(&inputText);
                 input.DisplayCharLimit(&inputCharLim);
                 input.textChanged = false;
-                // stop taking file input
-                inputFile.Clear();
-                inputFile.textChanged = true;
-                fclose(inFile);
-                inFile = NULL;
-                outputFile.Clear();
-                outputFile.textChanged = true;
-                fclose(outFile);
-                outFile = NULL;
-                switch(cipher){ // tell the ciphers about this change
-                    case Vigenere:{
-                        //vArgs.fileInput = false;
-                        break;
-                    }
-                    case Ceasar:{
-                        //cArgs.fileInput = false;
-                        break;
-                    }
-                    case ZigZag:{
-                        //zArgs.fileInput = false;
-                        break;
-                    }
-                    case Spiral:{
-                        //sArgs.fileInput = false;
-                        break;
+                if(!inputFileFrame){ // stop taking file input
+                    inputFile.Clear();
+                    inputFile.textChanged = true;
+                    fclose(inFile);
+                    inFile = NULL;
+                    outputFile.Clear();
+                    outputFile.textChanged = true;
+                    fclose(outFile);
+                    outFile = NULL;
+                    switch(cipher){ // tell the ciphers about this change
+                        case Vigenere:{
+                            vArgs.fileInput = false;
+                            break;
+                        }
+                        case Ceasar:{
+                            //cArgs.fileInput = false;
+                            break;
+                        }
+                        case ZigZag:{
+                            //zArgs.fileInput = false;
+                            break;
+                        }
+                        case Spiral:{
+                            //sArgs.fileInput = false;
+                            break;
+                        }
                     }
                 }
             }
+            inputFileFrame = false;
             if(inputText[0]=='\0' && selWindow!=Input)
                 DrawText("Type, Drag & Drop, or Paste Text...",input.x,input.y,GLOBALFONTSIZE,LIGHTGRAY);
             else
