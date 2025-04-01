@@ -1,0 +1,3 @@
+Kasiki's Test:
+* identify length of key
+when there is a repeated key, repeated sequences of letters in the text have a probability of having been encrypted by the same part of the key. The factors of the distance between these sequences are the potential key sizes

@@ -24,6 +24,7 @@
     * could not open output file
     * could not output to file for any other reason
     * cannot run processor because another one is running
+    * trying to crack a cipher with no expected word
  * display messages for:
     * successful file output
     * processing complete
@@ -695,23 +696,26 @@ void *VigenereCipher(void *input){
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"};
     char *alphabet = alphabets[*(V_input->alphabetChoice)];
     
-    char fileText[2048];
-    char *textChar = fileText;
+    char inText[2048];
+    char outText[2048];
+    char *inChar = inText;
+    char *outChar = outText;
     char *keyChar = V_input->key->text;
-    char *outChar = fileText;
+    char *expectChar = V_input->expectedWord->text;
+    int expectLen = V_input->expectedWord->size;
     int textIndex, keyIndex;
     int charCounter = 1;
     
-    if(V_input->fileInput){ // fill fileText with the file text // set textChar to point to that text
+    if(V_input->fileInput){ // fill inText with the file text // set inChar to point to that text
         rewind(*(V_input->inputFile));
         do{
-            *textChar = fgetc(*(V_input->inputFile));
-        } while( *(textChar++)!=EOF );
-        *(--textChar) = '\0';
-        textChar = fileText;
+            *inChar = fgetc(*(V_input->inputFile));
+        } while( *(inChar++)!=EOF );
+        *(--inChar) = '\0';
+        inChar = inText;
     }
-    else{ // set textChar to point to text
-        textChar = V_input->inputText->text;
+    else{ // set inChar to point to text
+        inChar = V_input->inputText->text;
     }
     
     // right now, we have a char pointer to our plain text and our key, and our alphabet at the ready
@@ -719,11 +723,11 @@ void *VigenereCipher(void *input){
         case Encrypt:{
             V_input->outputText->Clear();
             V_input->outputText->textChanged = true;
-            while(*textChar!='\0'){
-                textIndex = findChar(*textChar,alphabet);
+            while(*inChar!='\0'){
+                textIndex = findChar(*inChar,alphabet);
                 keyIndex = findChar(*keyChar,alphabet);
                 if(textIndex<0 || keyIndex<0)
-                    *outChar = *textChar;
+                    *outChar = *inChar;
                 else
                     *outChar = alphabet[(textIndex+keyIndex)%52];
                 
@@ -734,16 +738,14 @@ void *VigenereCipher(void *input){
                     V_input->outputText->InputString("Vigenere Cipher - ");
                     V_input->outputText->InputNum(charCounter);
                     V_input->outputText->InputString(" Characters Encrytped");
-                    V_input->outputText->textChanged = true;
                 }
-                else{
+                else
                     V_input->outputText->InputKey(*outChar);
-                    V_input->outputText->textChanged = true;
-                }
+                V_input->outputText->textChanged = true;
                 
                 // increment pointers
                 outChar++;
-                textChar++;
+                inChar++;
                 keyChar++;
                 charCounter++;
                 if(*keyChar=='\0') // wrap key if reach end
@@ -756,11 +758,11 @@ void *VigenereCipher(void *input){
         case Decrypt:{
             V_input->outputText->Clear();
             V_input->outputText->textChanged = true;
-            while(*textChar!='\0'){
-                textIndex = findChar(*textChar,alphabet);
+            while(*inChar!='\0'){
+                textIndex = findChar(*inChar,alphabet);
                 keyIndex = findChar(*keyChar,alphabet);
                 if(textIndex<0 || keyIndex<0)
-                    *outChar = *textChar;
+                    *outChar = *inChar;
                 else
                     *outChar = alphabet[(textIndex-keyIndex+52)%52];
                 
@@ -771,16 +773,14 @@ void *VigenereCipher(void *input){
                     V_input->outputText->InputString("Vigenere Cipher - ");
                     V_input->outputText->InputNum(charCounter);
                     V_input->outputText->InputString(" Characters Encrytped");
-                    V_input->outputText->textChanged = true;
                 }
-                else{
+                else
                     V_input->outputText->InputKey(*outChar);
-                    V_input->outputText->textChanged = true;
-                }
+                V_input->outputText->textChanged = true;
                 
                 // increment pointers
                 outChar++;
-                textChar++;
+                inChar++;
                 keyChar++;
                 charCounter++;
                 if(*keyChar=='\0') // wrap key if reach end
