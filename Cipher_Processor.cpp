@@ -569,15 +569,6 @@ struct ErrorMessages{
     int height;
     Texture2D tex;
     void AddMessage(const char *c){
-        // code to read message straight into array
-        //int charNum = 0;
-        //while(charNum<127 && c[charNum]!='\0'){
-        //    messages[!curErr][charNum] = c[charNum];
-        //    charNum++;
-        //}
-        //messages[!curErr][charNum] = '\0';
-        //curErr = !curErr;
-        
         // code to format message
         int dSize = 0;
         int dCap = 256; // large enough for every character to be on its own line
@@ -944,39 +935,46 @@ struct ErrorMessages{
         free(word);
         
         // set animation into motion
-        frame = -1;
+        if(frame>=0) // no animation/currently transitioning, start new transition
+            frame = 1;
+        if(frame<0) // currently fading out, animation will handle the transition
+            ;
         return;
     }
     void DrawMessage(){
-        // DrawTexture(tex,x,y,(Color){255,255,255,128});
-        // DrawText(messages[curErr],x+26,y+44,GLOBALFONTSIZE,(Color){0,0,0,128});
-        if(frame<0){
-            if(frame>-120){ // stay on screen for 2 seconds
+        if(frame<0){ // message fade away
+            if(frame>-180){ // stay on screen for 3 seconds
                 DrawTexture(tex,x,y,(Color){255,255,255,255});
                 DrawText(messages[curErr],x+26,y+44,GLOBALFONTSIZE,(Color){0,0,0,255});
+                if(messages[!curErr][0]!='\0'){ // if there is another message in queue
+                    frame = 1;
+                    return;
+                }
             }
             else{ // fade after 2 seconds
-                DrawTexture(tex,x,y,(Color){255,255,255,(int)(255-((((float)frame * -1.0)-120)/60.0)*255.0)});
-                DrawText(messages[curErr],x+26,y+44,GLOBALFONTSIZE,(Color){0,0,0,(int)(255-((((float)frame*-1.0)-120)/60.0)*255.0)});
+                DrawTexture(tex,x,y,(Color){255,255,255,(int)(255-((((float)frame * -1.0)-180)/60.0)*255.0)});
+                DrawText(messages[curErr],x+26,y+44,GLOBALFONTSIZE,(Color){0,0,0,(int)(255-((((float)frame*-1.0)-180)/60.0)*255.0)});
             }
-            
             frame--;
-            if(frame<-180){
-                frame = 1;
+            if(frame<-240){
+                frame = messages[!curErr][0]=='\0'?0:1; // start animation if there is a new message in queue
+                messages[curErr][0] = '\0';
             }
         }
-        if(frame>0){
+        if(frame>0){ // load new message
             // draw curErr transitioning to !curErr
-            // curErr falling away
-            DrawTexture(tex,x,y+((float)(frame-1)/60.0)*160.0,(Color){255,255,255,(int)(255-((float)(frame-1)/60.0)*255.0)});
-            DrawText(messages[curErr],x+26,y+44+((float)(frame-1)/60.0)*160.0,GLOBALFONTSIZE,(Color){0,0,0,(int)(255-((float)(frame-1)/(float)60)*255.0)});
             // new curErr
             DrawTexture(tex,x,-160+((float)(frame-1)/60.0)*160.0,(Color){255,255,255,(int)(0+((float)(frame-1)/60.0)*255.0)});
             DrawText(messages[!curErr],x+26,44-160+((float)(frame-1)/60.0)*160.0,GLOBALFONTSIZE,(Color){0,0,0,(int)(0+((float)(frame-1)/(float)60)*255.0)});
+            if(messages[curErr][0]!='\0'){ // curErr falling away
+                DrawTexture(tex,x,y+((float)(frame-1)/60.0)*160.0,(Color){255,255,255,(int)(255-((float)(frame-1)/60.0)*255.0)});
+                DrawText(messages[curErr],x+26,y+44+((float)(frame-1)/60.0)*160.0,GLOBALFONTSIZE,(Color){0,0,0,(int)(255-((float)(frame-1)/(float)60)*255.0)});
+            }
             frame++;
-            if(frame>61){
+            if(frame>60){
                 frame = -1;
                 curErr = !curErr;
+                messages[!curErr][0] = '\0';
             }
         }
     }
@@ -1440,21 +1438,27 @@ int main(void){
             selWindow = None;
             if(mx>=46 && mx<616 && my>=404 && my<684){ // select input window
                 selWindow = Input;
+                ems.AddMessage("Congratuations!!\nYou Selected The Input Window!");
             }
             if(mx>=662 && mx<1232 && my>=404 && my<684){ // select output window
                 selWindow = Output;
+                ems.AddMessage("Congratuations!!\nYou Selected The Output Window!");
             }
             if(mx>=250 && mx<534 && my>=364 && my<404){ // select inputFile window
                 selWindow = InputFile;
+                ems.AddMessage("Congratuations!!\nYou Selected The Input File Window!");
             }
             if(mx>=894 && mx<1150 && my>=364 && my<404){ // select outputFile window
                 selWindow = OutputFile;
+                ems.AddMessage("Congratuations!!\nYou Selected The Output File Window!");
             }
             if(mx>=212 && mx<462 && my>=166 && my<206 && cipher==Vigenere && operation<Crack){ // select V_Key window
                 selWindow = V_Key;
+                ems.AddMessage("Congratuations!!\nYou Selected The Vigenere Key Window!");
             }
             if(mx>=224 && mx<574 && my>=122 && my<162 && operation==Crack){ // select ExpectedWord window
                 selWindow = ExpectedWord;
+                ems.AddMessage("Congratuations!!\nYou Selected The Expected Word Window!");
             }
             
             // close alphabet menu on click away
