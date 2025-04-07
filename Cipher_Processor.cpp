@@ -944,7 +944,7 @@ struct ErrorMessages{
         free(word);
         
         // set animation into motion
-        frame = 1;
+        frame = -1;
         return;
     }
     void DrawMessage(){
@@ -952,15 +952,17 @@ struct ErrorMessages{
         // DrawText(messages[curErr],x+26,y+44,GLOBALFONTSIZE,(Color){0,0,0,128});
         if(frame<0){
             if(frame>-120){ // stay on screen for 2 seconds
-                // draw curErr
+                DrawTexture(tex,x,y,(Color){255,255,255,255});
+                DrawText(messages[curErr],x+26,y+44,GLOBALFONTSIZE,(Color){0,0,0,255});
             }
             else{ // fade after 2 seconds
-                // draw curErr fading away
+                DrawTexture(tex,x,y,(Color){255,255,255,(int)(255-((((float)frame * -1.0)-120)/60.0)*255.0)});
+                DrawText(messages[curErr],x+26,y+44,GLOBALFONTSIZE,(Color){0,0,0,(int)(255-((((float)frame*-1.0)-120)/60.0)*255.0)});
             }
             
             frame--;
             if(frame<-180){
-                frame = 0;
+                frame = 1;
             }
         }
         if(frame>0){
@@ -973,7 +975,7 @@ struct ErrorMessages{
             DrawText(messages[!curErr],x+26,44-160+((float)(frame-1)/60.0)*160.0,GLOBALFONTSIZE,(Color){0,0,0,(int)(0+((float)(frame-1)/(float)60)*255.0)});
             frame++;
             if(frame>61){
-                frame = 1;
+                frame = -1;
                 curErr = !curErr;
             }
         }
