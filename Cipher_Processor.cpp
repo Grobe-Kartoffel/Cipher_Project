@@ -965,8 +965,12 @@ struct ErrorMessages{
         }
         if(frame>0){
             // draw curErr transitioning to !curErr
-            DrawTexture(tex,x,y,(Color){255,255,255,(int)(255-((float)(frame-1)/(float)60)*255.0)});
-            DrawText(messages[curErr],x+26,y+44,GLOBALFONTSIZE,(Color){0,0,0,(int)(255-((float)(frame-1)/(float)60)*255.0)});
+            // curErr falling away
+            DrawTexture(tex,x,y+((float)(frame-1)/60.0)*160.0,(Color){255,255,255,(int)(255-((float)(frame-1)/60.0)*255.0)});
+            DrawText(messages[curErr],x+26,y+44+((float)(frame-1)/60.0)*160.0,GLOBALFONTSIZE,(Color){0,0,0,(int)(255-((float)(frame-1)/(float)60)*255.0)});
+            // new curErr
+            DrawTexture(tex,x,-160+((float)(frame-1)/60.0)*160.0,(Color){255,255,255,(int)(0+((float)(frame-1)/60.0)*255.0)});
+            DrawText(messages[!curErr],x+26,44-160+((float)(frame-1)/60.0)*160.0,GLOBALFONTSIZE,(Color){0,0,0,(int)(0+((float)(frame-1)/(float)60)*255.0)});
             frame++;
             if(frame>61){
                 frame = 1;
