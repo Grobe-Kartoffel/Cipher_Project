@@ -553,6 +553,10 @@ struct TextWindow{
 };
 struct ErrorMessages{
     ErrorMessages(Texture2D t){
+        messages[0][0] = '\0';
+        messages[1][0] = '\0';
+        messages[2][0] = '\0';
+        curErr = 0;
         frame = 0;
         x = 1280-288;
         y = 0;
@@ -560,8 +564,8 @@ struct ErrorMessages{
         height = 92;
         tex = t;
     }
-    char messages[2][256];
-    bool curErr;
+    char messages[3][256];
+    int curErr;
     int frame;
     int x;
     int y;
@@ -572,7 +576,13 @@ struct ErrorMessages{
         // code to format message
         int dSize = 0;
         int dCap = 256; // large enough for every character to be on its own line
-        char *display = messages[!curErr];
+        char *display;
+        // set display to next message
+        if(frame<=0) // currently, animation only uses 1 frame
+            display = messages[(curErr+1)%3];
+        else // currently, animation only uses 2 frames
+            display = messages[(curErr+2)%3];
+        
         for(int i = 0; i<dCap; i++) // clear text
             display[i] = '\0';
         
@@ -935,10 +945,9 @@ struct ErrorMessages{
         free(word);
         
         // set animation into motion
-        if(frame>=0) // no animation/currently transitioning, start new transition
+        if(frame==0) // no animation, start new transition
             frame = 1;
-        if(frame<0) // currently fading out, animation will handle the transition
-            ;
+        // if an animation is happening, it will handle the transition
         return;
     }
     void DrawMessage(){
@@ -946,9 +955,9 @@ struct ErrorMessages{
             if(frame>-180){ // stay on screen for 3 seconds
                 DrawTexture(tex,x,y,(Color){255,255,255,255});
                 DrawText(messages[curErr],x+26,y+44,GLOBALFONTSIZE,(Color){0,0,0,255});
-                if(messages[!curErr][0]!='\0'){ // if there is another message in queue
+                if(messages[(curErr+1)%3][0]!='\0'){ // if there is another message in queue
                     frame = 1;
-                    return;
+                    return; // frame will be decremented to 0, stopping animation if this is not here
                 }
             }
             else{ // fade after 2 seconds
@@ -957,24 +966,29 @@ struct ErrorMessages{
             }
             frame--;
             if(frame<-240){
-                frame = messages[!curErr][0]=='\0'?0:1; // start animation if there is a new message in queue
                 messages[curErr][0] = '\0';
+                if(messages[(curErr+1)%3][0]!='\0') // if there is another message, start transition animation
+                    frame = 1;
+                else // otherwise, stop animating
+                    frame = 0;
+                return;
             }
         }
         if(frame>0){ // load new message
             // draw curErr transitioning to !curErr
             // new curErr
             DrawTexture(tex,x,-160+((float)(frame-1)/60.0)*160.0,(Color){255,255,255,(int)(0+((float)(frame-1)/60.0)*255.0)});
-            DrawText(messages[!curErr],x+26,44-160+((float)(frame-1)/60.0)*160.0,GLOBALFONTSIZE,(Color){0,0,0,(int)(0+((float)(frame-1)/(float)60)*255.0)});
-            if(messages[curErr][0]!='\0'){ // curErr falling away
+            DrawText(messages[(curErr+1)%3],x+26,44-160+((float)(frame-1)/60.0)*160.0,GLOBALFONTSIZE,(Color){0,0,0,(int)(0+((float)(frame-1)/(float)60)*255.0)});
+            // curErr falling away
+            if(messages[curErr][0]!='\0'){
                 DrawTexture(tex,x,y+((float)(frame-1)/60.0)*160.0,(Color){255,255,255,(int)(255-((float)(frame-1)/60.0)*255.0)});
                 DrawText(messages[curErr],x+26,y+44+((float)(frame-1)/60.0)*160.0,GLOBALFONTSIZE,(Color){0,0,0,(int)(255-((float)(frame-1)/(float)60)*255.0)});
             }
             frame++;
             if(frame>60){
                 frame = -1;
-                curErr = !curErr;
-                messages[!curErr][0] = '\0';
+                messages[curErr][0] = '\0';
+                curErr = (curErr+1)%3;
             }
         }
     }
