@@ -13,20 +13,21 @@
  * VIGENERE CIPHER
     * cracking
  * display errors for:
-    * dragging a file over the wrong location
+    ^ dragging a file over the wrong location
     * typing too many characters into a text window?
-    * importing a file who's path is too long
-    * importing a file with the wrong extension
-    * importing a file that is too long
-    * file could not be imported for any other reason
-    * output path could not be generated
-    * output path not valid
-    * could not open output file
-    * could not output to file for any other reason
+    ^ importing a file who's path is too long
+    ^ importing a file with the wrong extension
+    ^ importing a file that is too long
+    ^ file could not be imported for any other reason
+    ^ output path could not be generated
+    - output path not valid
+    ^ could not open output file
+    * could not output to file for any reason
     * cannot run processor because another one is running
-    * trying to crack a cipher with no expected word
+    - trying to crack a cipher with no expected word
  * display messages for:
     * successful file output
+    ^ processing started
     * processing complete
  */
 
@@ -1384,7 +1385,6 @@ int main(void){
     
     // error messages
     ErrorMessages ems(LoadTexture("assets/ErrMsg.png"));
-    ems.AddMessage("Testing 123, howdoesthisworkagain? Will it work this time?");
     
     // mouse coords
     float mx;
@@ -1452,27 +1452,21 @@ int main(void){
             selWindow = None;
             if(mx>=46 && mx<616 && my>=404 && my<684){ // select input window
                 selWindow = Input;
-                ems.AddMessage("Congratuations!!\nYou Selected The Input Window!");
             }
             if(mx>=662 && mx<1232 && my>=404 && my<684){ // select output window
                 selWindow = Output;
-                ems.AddMessage("Congratuations!!\nYou Selected The Output Window!");
             }
             if(mx>=250 && mx<534 && my>=364 && my<404){ // select inputFile window
                 selWindow = InputFile;
-                ems.AddMessage("Congratuations!!\nYou Selected The Input File Window!");
             }
             if(mx>=894 && mx<1150 && my>=364 && my<404){ // select outputFile window
                 selWindow = OutputFile;
-                ems.AddMessage("Congratuations!!\nYou Selected The Output File Window!");
             }
             if(mx>=212 && mx<462 && my>=166 && my<206 && cipher==Vigenere && operation<Crack){ // select V_Key window
                 selWindow = V_Key;
-                ems.AddMessage("Congratuations!!\nYou Selected The Vigenere Key Window!");
             }
             if(mx>=224 && mx<574 && my>=122 && my<162 && operation==Crack){ // select ExpectedWord window
                 selWindow = ExpectedWord;
-                ems.AddMessage("Congratuations!!\nYou Selected The Expected Word Window!");
             }
             
             // close alphabet menu on click away
@@ -1545,8 +1539,10 @@ int main(void){
                                 outputFile.InputString("Cracked.txt");
                                 break;
                         }
-                        if(!IsFileExtension(outputFile.text,".txt")) // verify the whole name could be printed
+                        if(!IsFileExtension(outputFile.text,".txt")){ // verify the whole name could be printed
+                            ems.AddMessage("Output Path Could Not Be Generated.");
                             outputFile.Clear();
+                        }
                         outputFile.textChanged = true;
                         
                         // load output file
@@ -1556,19 +1552,28 @@ int main(void){
                             outFile = NULL;
                         }
                         outFile = fopen(outputFile.text,"w");
-                        if(outFile==NULL)
+                        if(outFile==NULL){
+                            ems.AddMessage("Output File Could Not Be Opened.");
                             outputFile.Clear();
-                        
+                        }
                         // tell program not to clear input file because of text update this frame
                         inputFileFrame = true;
                     }
                     else{ // failed to open input file, clear file input
+                        if(GetFileLength(inputFile.text)>=2048)
+                            ems.AddMessage("Imported File Is Too Long.\nPlease Be Sure To Import A File Less Than 2048 Characters Long.");
+                        else
+                            ems.AddMessage("Imported File Could Not Be Opened.\nPlease Make Sure The File Is Closed Before Trying Again.");
                         // these two variables will cause later code to clear everything for us
                         input.textChanged = true;
                         inputFileFrame = false;
                     }
                 }
                 else{ // failed to open input file, clear file input
+                    if( !(IsFileExtension(inputFile.text, ".txt") || IsFileExtension(inputFile.text, ".csv")) )
+                        ems.AddMessage("Imported File Type Is Incorrect.\nPlease Be Sure To Import A Text File (.txt) Or CSV File (.csv)");
+                    else
+                        ems.AddMessage("Imported File Too Short To Be Valid.\nPlease Be Sure To Import A File That Looks Like This:\n\"filename.txt\"");
                     // these two variables will cause later code to clear everything for us
                     input.textChanged = true;
                     inputFileFrame = false;
@@ -1598,8 +1603,12 @@ int main(void){
             }
             if(executeButton==Pressed && mx>=1068 && mx<1220 && my>=276 && my<328){ // activate execute button
                 executeButton = Enabled;
-                if(cipher==Vigenere && !vArgs.running)
+                if(cipher==Vigenere && !vArgs.running){
                     pthread_create(&vigenereThread,NULL,VigenereCipher,&vArgs);
+                    ems.AddMessage("Process Started");
+                }
+                else
+                    ems.AddMessage("Another Process Is Already Running.\nPlease Wait Until It Is Complete Before Starting Another Process.");
             }
             if(V_alphabetButton==Pressed && mx>=350 && mx<388 && my>=124 && my<162){ // activate vigenere alphabet button
                 V_alphabetButton = Enabled;
@@ -1721,8 +1730,10 @@ int main(void){
                                 outputFile.InputString("Cracked.txt");
                                 break;
                         }
-                        if(!IsFileExtension(outputFile.text,".txt")) // verify the whole name could be printed
+                        if(!IsFileExtension(outputFile.text,".txt")){ // verify the whole name could be printed
+                            ems.AddMessage("Output Path Could Not Be Generated.");
                             outputFile.Clear();
+                        }
                         outputFile.textChanged = true;
                         
                         // load output file
@@ -1732,24 +1743,41 @@ int main(void){
                             outFile = NULL;
                         }
                         outFile = fopen(outputFile.text,"w");
-                        if(outFile==NULL)
+                        if(outFile==NULL){
+                            ems.AddMessage("Output File Could Not Be Opened.");
                             outputFile.Clear();
-                        
+                        }
                         // tell program not to clear input file because of text update this frame
                         inputFileFrame = true;
                     }
                     else{ // new file failed to open, reopen file from old path
+                        ems.AddMessage("Dropped File Could Not Be Loaded.\nAttempting To Reopen Previously Loaded File.");
                         if(inputFile.size>=5 && (IsFileExtension(inputFile.text, ".txt") || IsFileExtension(inputFile.text, ".csv")) ){
                             inFile = fopen(inputFile.text,"r");
                             if(inFile==NULL || GetFileLength(inputFile.text)>=2048){
                                 // old file path couldn't be opened, clear file path
                                 // these two variables will cause later code to clear everything for us
+                                ems.AddMessage("Previously Loaded File Could Not Be Reopened.");
                                 input.textChanged = true;
                                 inputFileFrame = false;
+                            }
+                            else{
+                                ems.AddMessage("Previously Loaded File Was Successfully Reopened.");
                             }
                         }
                     }
                 }
+                else{
+                    if( !(IsFileExtension(droppedFiles.paths[0], ".txt") || IsFileExtension(droppedFiles.paths[0], ".csv")) )
+                        ems.AddMessage("Dropped File Type Is Incorrect.\nPlease Be Sure To Drop A Text File (.txt) Or CSV File (.csv)");
+                    else if(GetFileLength(droppedFiles.paths[0])>=2048)
+                        ems.AddMessage("Dropped File Is Too Long.\nPlease Be Sure To Drop A File Less Than 2048 Characters Long.");
+                    else if(TextLength(droppedFiles.paths[0])>=inputFile.capacity)
+                        ems.AddMessage("Dropped File Path Is Too Long.\nPlease Be Sure To Drop A File With A File Path Less Than 256 Characters Long.");
+                }
+            }
+            else{
+                ems.AddMessage("File Dropped In Wrong Location.\nPlease Be Sure To Drop File Over Input Window.");
             }
             UnloadDroppedFiles(droppedFiles);
         }
