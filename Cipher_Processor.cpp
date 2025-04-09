@@ -6,29 +6,32 @@
 #include "raylib.h"
 
 /* TO DO:
- * only open and work with files when necessary
-    * when inputting a file, open, read, close
-    * when processing text, pass the file paths needed
-       * open files when needed, close when done
+ ^ test copy and paste on text with newlines in it
+ ^ test copy and paste when text truncates
+ ^ only open and work with files when necessary
+    ^ when inputting a file, open, read, close
+    ^ when outputting a file, open, write, close
+    ^ when processing text, pass the file paths needed
+       ^ open files when needed, close when done
  * VIGENERE CIPHER
     * cracking
  * display errors for:
     ^ dragging a file over the wrong location
-    * typing too many characters into a text window?
+    ^ typing too many characters into a text window?
     ^ importing a file who's path is too long
     ^ importing a file with the wrong extension
     ^ importing a file that is too long
     ^ file could not be imported for any other reason
     ^ output path could not be generated
-    - output path not valid
+    ^ output path not valid
     ^ could not open output file
-    * could not output to file for any reason
-    * cannot run processor because another one is running
+    ^ could not output to file for any reason
+    ^ cannot run processor because another one is running
     - trying to crack a cipher with no expected word
  * display messages for:
-    * successful file output
+    ^ successful file output
     ^ processing started
-    * processing complete
+    ^ processing complete
  */
 
 int GLOBALFONTSIZE = 15;
@@ -1015,8 +1018,9 @@ struct t_ThreadArgs{
         windows[4] = NULL;
         windows[5] = NULL;
         windows[6] = NULL;
+        ems = NULL;
     }
-    t_ThreadArgs(SelWindow *selWindow, TextWindow *input, TextWindow *output, TextWindow *inputFile, TextWindow *outputFile, TextWindow *v_Key, TextWindow *expectedWord){
+    t_ThreadArgs(SelWindow *selWindow, TextWindow *input, TextWindow *output, TextWindow *inputFile, TextWindow *outputFile, TextWindow *v_Key, TextWindow *expectedWord, ErrorMessages *ems){
         this->selWindow = selWindow;
         windows[0] = NULL;
         windows[1] = input;
@@ -1025,9 +1029,11 @@ struct t_ThreadArgs{
         windows[4] = outputFile;
         windows[5] = v_Key;
         windows[6] = expectedWord;
+        this->ems = ems;
     }
     SelWindow *selWindow;
     TextWindow *windows[7];
+    ErrorMessages *ems;
 };
 struct V_CipherArgs{
     V_CipherArgs(){
@@ -1041,8 +1047,9 @@ struct V_CipherArgs{
         outputText = NULL;
         key = NULL;
         expectedWord = NULL;
+        ems = NULL;
     }
-    V_CipherArgs(Operation *operation, int *alphabetChoice, FILE **inputFile, FILE **outputFile, TextWindow *inputText, TextWindow *outputText, TextWindow *key, TextWindow *expectedWord){
+    V_CipherArgs(Operation *operation, int *alphabetChoice, TextWindow *inputFile, TextWindow *outputFile, TextWindow *inputText, TextWindow *outputText, TextWindow *key, TextWindow *expectedWord, ErrorMessages *ems){
         this->fileInput = false;
         this->running = false;
         this->operation = operation;
@@ -1053,17 +1060,19 @@ struct V_CipherArgs{
         this->outputText = outputText;
         this->key = key;
         this->expectedWord = expectedWord;
+        this->ems = ems;
     }
     bool fileInput;
     bool running;
     Operation *operation;
     int *alphabetChoice;
-    FILE **inputFile;
-    FILE **outputFile;
     TextWindow *inputText;
     TextWindow *outputText;
+    TextWindow *inputFile;
+    TextWindow *outputFile;
     TextWindow *key;
     TextWindow *expectedWord;
+    ErrorMessages *ems;
 };
 
 void *textInput(void *input){ // text input thread
@@ -1103,13 +1112,15 @@ void *textInput(void *input){ // text input thread
         if(canPaste && (IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)) && IsKeyDown(KEY_V)){
             pText = GetClipboardText();
             while(*pText!='\0' && window->size<window->capacity){
-                if(*pText=='\r' || *pText=='\n'){
+                if(*pText=='\r'){
                     pText++;
                     continue;
                 }
                 window->text[window->size] = (*pText=='\t'?' ':*pText);
                 window->size++;
                 pText++;
+                if(window->size==window->capacity)
+                    t_input->ems->AddMessage("Pasted Text Was Truncated.");
             }
             canPaste = false;
             window->textChanged = true;
@@ -1176,6 +1187,8 @@ void *textInput(void *input){ // text input thread
             window->size++;
             window->textChanged = true;
         }
+        else if(key!='\0' && window->size==window->capacity)
+            t_input->ems->AddMessage("Maximum Characters Reached For Text Window.");
     }
 	return NULL;
 }
@@ -1192,6 +1205,8 @@ void *VigenereCipher(void *input){
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"};
     char *alphabet = alphabets[*(V_input->alphabetChoice)];
     
+    FILE *inFile = NULL;
+    FILE *outFile = NULL;
     char inText[2048];
     char outText[2048];
     char *inChar = inText;
@@ -1203,12 +1218,28 @@ void *VigenereCipher(void *input){
     int charCounter = 1;
     
     if(V_input->fileInput){ // fill inText with the file text // set inChar to point to that text
-        rewind(*(V_input->inputFile));
-        do{
-            *inChar = fgetc(*(V_input->inputFile));
-        } while( *(inChar++)!=EOF );
-        *(--inChar) = '\0';
-        inChar = inText;
+        inFile = fopen(V_input->inputFile->text,"r");
+        if(inFile!=NULL){
+            do{
+                *inChar = fgetc(inFile);
+            } while( *(inChar++)!=EOF );
+            *(--inChar) = '\0';
+            inChar = inText;
+            fclose(inFile);
+            inFile = NULL;
+        }
+        else{
+            V_input->ems->AddMessage("Input File Could Not Be Opened.\nAborting Processing.\nPlease Be Sure That The File Is Closed And Try Again.");
+            V_input->running = false;
+            return NULL;
+        }
+        outFile = fopen(V_input->outputFile->text,"w");
+        if(outFile==NULL){
+            V_input->ems->AddMessage("Output File Could Not Be Opened.\nAborting Processing.\nPlease Be Sure That The File Is Closed And Try Again.");
+            V_input->running = false;
+            return NULL;
+        }
+        
     }
     else{ // set inChar to point to text
         inChar = V_input->inputText->text;
@@ -1229,7 +1260,7 @@ void *VigenereCipher(void *input){
                 
                 // output
                 if(V_input->fileInput){
-                    fputc(*outChar,*(V_input->outputFile));
+                    fputc(*outChar,outFile);
                     V_input->outputText->Clear();
                     V_input->outputText->InputString("Vigenere Cipher - ");
                     V_input->outputText->InputNum(charCounter);
@@ -1247,8 +1278,10 @@ void *VigenereCipher(void *input){
                 if(*keyChar=='\0') // wrap key if reach end
                     keyChar = V_input->key->text;
             }
-            if(V_input->fileInput)
-                fflush(*(V_input->outputFile));
+            if(V_input->fileInput){
+                fflush(outFile);
+                fclose(outFile);
+            }
             break;
         }
         case Decrypt:{
@@ -1264,11 +1297,11 @@ void *VigenereCipher(void *input){
                 
                 // output
                 if(V_input->fileInput){
-                    fputc(*outChar,*(V_input->outputFile));
+                    fputc(*outChar,outFile);
                     V_input->outputText->Clear();
                     V_input->outputText->InputString("Vigenere Cipher - ");
                     V_input->outputText->InputNum(charCounter);
-                    V_input->outputText->InputString(" Characters Encrytped");
+                    V_input->outputText->InputString(" Characters Decrytped");
                 }
                 else
                     V_input->outputText->InputKey(*outChar);
@@ -1282,14 +1315,17 @@ void *VigenereCipher(void *input){
                 if(*keyChar=='\0') // wrap key if reach end
                     keyChar = V_input->key->text;
             }
-            if(V_input->fileInput)
-                fflush(*(V_input->outputFile));
+            if(V_input->fileInput){
+                fflush(outFile);
+                fclose(outFile);
+            }
             break;
         }
         case Crack:{
             break;
         }
     }
+    V_input->ems->AddMessage("Processing Complete.");
     V_input->running = false;
     return NULL;
 }
@@ -1398,11 +1434,11 @@ int main(void){
     char c; // buffer char to read to and from files
     
     // threads
-    t_ThreadArgs tArgs(&selWindow,&input,&output,&inputFile,&outputFile,&v_Key,&expectedWord);
+    t_ThreadArgs tArgs(&selWindow,&input,&output,&inputFile,&outputFile,&v_Key,&expectedWord,&ems);
     pthread_t inputThread;
     pthread_create(&inputThread,NULL,textInput,&tArgs);
     
-    V_CipherArgs vArgs(&operation,&V_alphabetMenuOption,&inFile,&outFile,&input,&output,&v_Key,&expectedWord);
+    V_CipherArgs vArgs(&operation,&V_alphabetMenuOption,&inputFile,&outputFile,&input,&output,&v_Key,&expectedWord,&ems);
     pthread_t vigenereThread;
     
     // running loop
@@ -1503,9 +1539,6 @@ int main(void){
                             c = fgetc(inFile);
                         }
                         input.textChanged = true;
-                        outputFile.Clear();
-                        outputFile.InputNum(GetFileLength(inputFile.text));
-                        outputFile.textChanged = true;
                         
                         // create output file name
                         outputFile.Clear();
@@ -1545,17 +1578,10 @@ int main(void){
                         }
                         outputFile.textChanged = true;
                         
-                        // load output file
-                        if(outFile!=NULL){
-                            fflush(outFile);
-                            fclose(outFile);
-                            outFile = NULL;
-                        }
-                        outFile = fopen(outputFile.text,"w");
-                        if(outFile==NULL){
-                            ems.AddMessage("Output File Could Not Be Opened.");
-                            outputFile.Clear();
-                        }
+                        fclose(inFile);
+                        inFile = NULL;
+                        ems.AddMessage("Imported File Successfully Opened.");
+                        
                         // tell program not to clear input file because of text update this frame
                         inputFileFrame = true;
                     }
@@ -1598,8 +1624,13 @@ int main(void){
                         fflush(outFile);
                         fclose(outFile);
                         outFile = NULL;
+                        ems.AddMessage("File Successfully Exported.");
                     }
+                    else
+                        ems.AddMessage("Output File Could Not Be Opened.\nPlease Be Sure That The Output File Is Not Open And Try Again.");
                 }
+                else
+                    ems.AddMessage("Output Path File Type Is Not Valid.\nPlease Be Sure That The Output Path File Extension Is \".txt\"");
             }
             if(executeButton==Pressed && mx>=1068 && mx<1220 && my>=276 && my<328){ // activate execute button
                 executeButton = Enabled;
@@ -1736,36 +1767,12 @@ int main(void){
                         }
                         outputFile.textChanged = true;
                         
-                        // load output file
-                        if(outFile!=NULL){
-                            fflush(outFile);
-                            fclose(outFile);
-                            outFile = NULL;
-                        }
-                        outFile = fopen(outputFile.text,"w");
-                        if(outFile==NULL){
-                            ems.AddMessage("Output File Could Not Be Opened.");
-                            outputFile.Clear();
-                        }
-                        // tell program not to clear input file because of text update this frame
-                        inputFileFrame = true;
+                        fclose(inFile);
+                        inFile = NULL;
+                        ems.AddMessage("Dropped File Successfully Loaded.");
                     }
-                    else{ // new file failed to open, reopen file from old path
-                        ems.AddMessage("Dropped File Could Not Be Loaded.\nAttempting To Reopen Previously Loaded File.");
-                        if(inputFile.size>=5 && (IsFileExtension(inputFile.text, ".txt") || IsFileExtension(inputFile.text, ".csv")) ){
-                            inFile = fopen(inputFile.text,"r");
-                            if(inFile==NULL || GetFileLength(inputFile.text)>=2048){
-                                // old file path couldn't be opened, clear file path
-                                // these two variables will cause later code to clear everything for us
-                                ems.AddMessage("Previously Loaded File Could Not Be Reopened.");
-                                input.textChanged = true;
-                                inputFileFrame = false;
-                            }
-                            else{
-                                ems.AddMessage("Previously Loaded File Was Successfully Reopened.");
-                            }
-                        }
-                    }
+                    else // new file failed to open, old file path and text is still available
+                        ems.AddMessage("Dropped File Could Not Be Loaded.\nPlease Make Sure The File Is Closed Before Trying Again.");
                 }
                 else{
                     if( !(IsFileExtension(droppedFiles.paths[0], ".txt") || IsFileExtension(droppedFiles.paths[0], ".csv")) )
@@ -1776,9 +1783,8 @@ int main(void){
                         ems.AddMessage("Dropped File Path Is Too Long.\nPlease Be Sure To Drop A File With A File Path Less Than 256 Characters Long.");
                 }
             }
-            else{
+            else
                 ems.AddMessage("File Dropped In Wrong Location.\nPlease Be Sure To Drop File Over Input Window.");
-            }
             UnloadDroppedFiles(droppedFiles);
         }
         if(!vArgs.running){
