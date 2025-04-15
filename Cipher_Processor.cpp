@@ -1635,8 +1635,12 @@ int main(void){
             if(executeButton==Pressed && mx>=1068 && mx<1220 && my>=276 && my<328){ // activate execute button
                 executeButton = Enabled;
                 if(cipher==Vigenere && !vArgs.running){
-                    pthread_create(&vigenereThread,NULL,VigenereCipher,&vArgs);
-                    ems.AddMessage("Process Started");
+                    if(operation<Crack && v_Key.size==0)
+                        ems.AddMessage("No Key Was Given.\nPlease Be Sure To Enter A Key Before Processing The Vigenere Cipher.");
+                    else{
+                        pthread_create(&vigenereThread,NULL,VigenereCipher,&vArgs);
+                        ems.AddMessage("Process Started");
+                    }
                 }
                 else
                     ems.AddMessage("Another Process Is Already Running.\nPlease Wait Until It Is Complete Before Starting Another Process.");
