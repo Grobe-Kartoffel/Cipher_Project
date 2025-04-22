@@ -6,32 +6,12 @@
 #include "raylib.h"
 
 /* TO DO:
- ^ test copy and paste on text with newlines in it
- ^ test copy and paste when text truncates
- ^ only open and work with files when necessary
-    ^ when inputting a file, open, read, close
-    ^ when outputting a file, open, write, close
-    ^ when processing text, pass the file paths needed
-       ^ open files when needed, close when done
- * VIGENERE CIPHER
-    * cracking
- * display errors for:
-    ^ dragging a file over the wrong location
-    ^ typing too many characters into a text window?
-    ^ importing a file who's path is too long
-    ^ importing a file with the wrong extension
-    ^ importing a file that is too long
-    ^ file could not be imported for any other reason
-    ^ output path could not be generated
-    ^ output path not valid
-    ^ could not open output file
-    ^ could not output to file for any reason
-    ^ cannot run processor because another one is running
-    - trying to crack a cipher with no expected word
- * display messages for:
-    ^ successful file output
-    ^ processing started
-    ^ processing complete
+ * file export is overwritten
+    * imported file is processed
+    * result is automatically exported
+    * user then presses export
+    * exact output text is exported, overwriting output
+    * DISABLE EXPORT BUTTON UNTIL EXPORT WINDOW IS MODIFIED
  */
 
 int GLOBALFONTSIZE = 15;
@@ -1325,7 +1305,10 @@ void *VigenereCipher(void *input){
             break;
         }
     }
-    V_input->ems->AddMessage("Processing Complete.");
+    if(V_input->fileInput)
+        V_input->ems->AddMessage("Processing Complete.\nFile Automatically Exported.");
+    else
+        V_input->ems->AddMessage("Processing Complete.");
     V_input->running = false;
     return NULL;
 }
@@ -1474,6 +1457,194 @@ int main(void){
                     cipher = ZigZag;
                 if(mx>=526)
                     cipher = Spiral;
+                // fix output path
+                if(outputFile.size>=20){ // shortest valid path that we want to check is a_Ceasar_Cracked.txt (20 characters)
+                    int i = outputFile.size-19; // earliest possible occurence of our cipher name
+                    while(outputFile.text[i]!='_'){
+                        i--;
+                        if(i<=0)
+                            break;
+                    }
+                    if(i>0 && outputFile.text[i+1]=='V' && outputFile.text[i+2]=='i' && outputFile.text[i+3]=='g' && outputFile.text[i+4]=='e' && outputFile.text[i+5]=='n' && outputFile.text[i+6]=='e' && outputFile.text[i+7]=='r' && outputFile.text[i+8]=='e' && outputFile.text[i+9]=='_'){
+                        if(cipher==Ceasar){
+                            outputFile.text[i+1] = 'C';
+                            outputFile.text[i+2] = 'e';
+                            outputFile.text[i+3] = 'a';
+                            outputFile.text[i+4] = 's';
+                            outputFile.text[i+5] = 'a';
+                            outputFile.text[i+6] = 'r';
+                            i += 7;
+                            while(i<outputFile.size-2 && outputFile.text[i]!='\0'){
+                                outputFile.text[i] = outputFile.text[i+2];
+                                i++;
+                            }
+                            outputFile.text[i] = '\0';
+                            outputFile.text[i+1] = '\0';
+                            outputFile.size -= 2;
+                            outputFile.textChanged = true;
+                            inputFileFrame = true;
+                        }
+                        if(cipher==ZigZag){
+                            outputFile.text[i+1] = 'Z';
+                            outputFile.text[i+2] = 'i';
+                            outputFile.text[i+3] = 'g';
+                            outputFile.text[i+4] = 'Z';
+                            outputFile.text[i+5] = 'a';
+                            outputFile.text[i+6] = 'g';
+                            i += 7;
+                            while(i<outputFile.size-2 && outputFile.text[i]!='\0'){
+                                outputFile.text[i] = outputFile.text[i+2];
+                                i++;
+                            }
+                            outputFile.text[i] = '\0';
+                            outputFile.text[i+1] = '\0';
+                            outputFile.size -= 2;
+                            outputFile.textChanged = true;
+                            inputFileFrame = true;
+                        }
+                        if(cipher==Spiral){
+                            outputFile.text[i+1] = 'S';
+                            outputFile.text[i+2] = 'p';
+                            outputFile.text[i+3] = 'i';
+                            outputFile.text[i+4] = 'r';
+                            outputFile.text[i+5] = 'a';
+                            outputFile.text[i+6] = 'l';
+                            i += 7;
+                            while(i<outputFile.size-2 && outputFile.text[i]!='\0'){
+                                outputFile.text[i] = outputFile.text[i+2];
+                                i++;
+                            }
+                            outputFile.text[i] = '\0';
+                            outputFile.text[i+1] = '\0';
+                            outputFile.size -= 2;
+                            outputFile.textChanged = true;
+                            inputFileFrame = true;
+                        }
+                    }
+                    else if(i>0 && outputFile.text[i+1]=='C' && outputFile.text[i+2]=='e' && outputFile.text[i+3]=='a' && outputFile.text[i+4]=='s' && outputFile.text[i+5]=='a' && outputFile.text[i+6]=='r' && outputFile.text[i+7]=='_'){
+                        if(cipher==Vigenere){
+                            if(outputFile.size<outputFile.capacity-2){
+                                for(int j = outputFile.size+1; outputFile.text[j-1]!='_'; j--) // shift text down to make room for vigenere
+                                    outputFile.text[j] = outputFile.text[j-2];
+                                outputFile.text[i+1] = 'V';
+                                outputFile.text[i+2] = 'i';
+                                outputFile.text[i+3] = 'g';
+                                outputFile.text[i+4] = 'e';
+                                outputFile.text[i+5] = 'n';
+                                outputFile.text[i+6] = 'e';
+                                outputFile.text[i+7] = 'r';
+                                outputFile.text[i+8] = 'e';
+                                outputFile.size += 2;
+                                inputFileFrame = true;
+                            }
+                            else
+                                inputFileFrame = false;
+                            outputFile.textChanged = true;
+                        }
+                        if(cipher==ZigZag){
+                            outputFile.text[i+1] = 'Z';
+                            outputFile.text[i+2] = 'i';
+                            outputFile.text[i+3] = 'g';
+                            outputFile.text[i+4] = 'Z';
+                            outputFile.text[i+5] = 'a';
+                            outputFile.text[i+6] = 'g';
+                            outputFile.textChanged = true;
+                            inputFileFrame = true;
+                        }
+                        if(cipher==Spiral){
+                            outputFile.text[i+1] = 'S';
+                            outputFile.text[i+2] = 'p';
+                            outputFile.text[i+3] = 'i';
+                            outputFile.text[i+4] = 'r';
+                            outputFile.text[i+5] = 'a';
+                            outputFile.text[i+6] = 'l';
+                            outputFile.textChanged = true;
+                            inputFileFrame = true;
+                        }
+                    }
+                    else if(i>0 && outputFile.text[i+1]=='Z' && outputFile.text[i+2]=='i' && outputFile.text[i+3]=='g' && outputFile.text[i+4]=='Z' && outputFile.text[i+5]=='a' && outputFile.text[i+6]=='g' && outputFile.text[i+7]=='_'){
+                        if(cipher==Vigenere){
+                            if(outputFile.size<outputFile.capacity-2){
+                                for(int j = outputFile.size+1; outputFile.text[j-1]!='_'; j--) // shift text down to make room for vigenere
+                                    outputFile.text[j] = outputFile.text[j-2];
+                                outputFile.text[i+1] = 'V';
+                                outputFile.text[i+2] = 'i';
+                                outputFile.text[i+3] = 'g';
+                                outputFile.text[i+4] = 'e';
+                                outputFile.text[i+5] = 'n';
+                                outputFile.text[i+6] = 'e';
+                                outputFile.text[i+7] = 'r';
+                                outputFile.text[i+8] = 'e';
+                                outputFile.size += 2;
+                                inputFileFrame = true;
+                            }
+                            else
+                                inputFileFrame = false;
+                            outputFile.textChanged = true;
+                        }
+                        if(cipher==Ceasar){
+                            outputFile.text[i+1] = 'C';
+                            outputFile.text[i+2] = 'e';
+                            outputFile.text[i+3] = 'a';
+                            outputFile.text[i+4] = 's';
+                            outputFile.text[i+5] = 'a';
+                            outputFile.text[i+6] = 'r';
+                            outputFile.textChanged = true;
+                            inputFileFrame = true;
+                        }
+                        if(cipher==Spiral){
+                            outputFile.text[i+1] = 'S';
+                            outputFile.text[i+2] = 'p';
+                            outputFile.text[i+3] = 'i';
+                            outputFile.text[i+4] = 'r';
+                            outputFile.text[i+5] = 'a';
+                            outputFile.text[i+6] = 'l';
+                            outputFile.textChanged = true;
+                            inputFileFrame = true;
+                        }
+                    }
+                    else if(i>0 && outputFile.text[i+1]=='S' && outputFile.text[i+2]=='p' && outputFile.text[i+3]=='i' && outputFile.text[i+4]=='r' && outputFile.text[i+5]=='a' && outputFile.text[i+6]=='l' && outputFile.text[i+7]=='_'){
+                        if(cipher==Vigenere){
+                            if(outputFile.size<outputFile.capacity-2){
+                                for(int j = outputFile.size+1; outputFile.text[j-1]!='_'; j--) // shift text down to make room for vigenere
+                                    outputFile.text[j] = outputFile.text[j-2];
+                                outputFile.text[i+1] = 'V';
+                                outputFile.text[i+2] = 'i';
+                                outputFile.text[i+3] = 'g';
+                                outputFile.text[i+4] = 'e';
+                                outputFile.text[i+5] = 'n';
+                                outputFile.text[i+6] = 'e';
+                                outputFile.text[i+7] = 'r';
+                                outputFile.text[i+8] = 'e';
+                                outputFile.size += 2;
+                                inputFileFrame = true;
+                            }
+                            else
+                                inputFileFrame = false;
+                            outputFile.textChanged = true;
+                        }
+                        if(cipher==Ceasar){
+                            outputFile.text[i+1] = 'C';
+                            outputFile.text[i+2] = 'e';
+                            outputFile.text[i+3] = 'a';
+                            outputFile.text[i+4] = 's';
+                            outputFile.text[i+5] = 'a';
+                            outputFile.text[i+6] = 'r';
+                            outputFile.textChanged = true;
+                            inputFileFrame = true;
+                        }
+                        if(cipher==ZigZag){
+                            outputFile.text[i+1] = 'Z';
+                            outputFile.text[i+2] = 'i';
+                            outputFile.text[i+3] = 'g';
+                            outputFile.text[i+4] = 'Z';
+                            outputFile.text[i+5] = 'a';
+                            outputFile.text[i+6] = 'g';
+                            outputFile.textChanged = true;
+                            inputFileFrame = true;
+                        }
+                    }
+                }
             }
             if(mx>=234 && mx<576 && my>=80 && my<118){ // set operation
                 if(mx<318)
@@ -1484,6 +1655,115 @@ int main(void){
                     operation = Crack;
                 if(mx>=490)
                     operation = Info;
+                // fix output path
+                if(outputFile.size>=20){ // shortest valid path that we want to check is a_Ceasar_Cracked.txt (20 characters)
+                    int i = outputFile.size-12; // earliest possible occurence of our operation
+                    while(outputFile.text[i]!='_'){
+                        i--;
+                        if(i<=0)
+                            break;
+                    }
+                    if(i>0 && outputFile.text[i+1]=='E' && outputFile.text[i+2]=='n' && outputFile.text[i+3]=='c' && outputFile.text[i+4]=='r' && outputFile.text[i+5]=='y' && outputFile.text[i+6]=='p' && outputFile.text[i+7]=='t' && outputFile.text[i+8]=='i' && outputFile.text[i+9]=='o' && outputFile.text[i+10]=='n' && outputFile.text[i+11]=='.'){
+                        if(operation==Decrypt){
+                            outputFile.text[i+1] = 'D';
+                            outputFile.text[i+2] = 'e';
+                            outputFile.textChanged = true;
+                            inputFileFrame = true;
+                        }
+                        if(operation==Crack){
+                            outputFile.text[i+1] = 'C';
+                            outputFile.text[i+2] = 'r';
+                            outputFile.text[i+3] = 'a';
+                            outputFile.text[i+4] = 'c';
+                            outputFile.text[i+5] = 'k';
+                            outputFile.text[i+6] = 'e';
+                            outputFile.text[i+7] = 'd';
+                            outputFile.text[i+8] = '.';
+                            outputFile.text[i+9] = 't';
+                            outputFile.text[i+10] = 'x';
+                            outputFile.text[i+11] = 't';
+                            i += 12;
+                            outputFile.text[i] = '\0';
+                            outputFile.text[i+1] = '\0';
+                            outputFile.text[i+2] = '\0';
+                            outputFile.size -= 3;
+                            outputFile.textChanged = true;
+                            inputFileFrame = true;
+                        }
+                    }
+                    else if(i>0 && outputFile.text[i+1]=='D' && outputFile.text[i+2]=='e' && outputFile.text[i+3]=='c' && outputFile.text[i+4]=='r' && outputFile.text[i+5]=='y' && outputFile.text[i+6]=='p' && outputFile.text[i+7]=='t' && outputFile.text[i+8]=='i' && outputFile.text[i+9]=='o' && outputFile.text[i+10]=='n' && outputFile.text[i+11]=='.'){
+                        if(operation==Encrypt){
+                            outputFile.text[i+1] = 'E';
+                            outputFile.text[i+2] = 'n';
+                            outputFile.textChanged = true;
+                            inputFileFrame = true;
+                        }
+                        if(operation==Crack){
+                            outputFile.text[i+1] = 'C';
+                            outputFile.text[i+2] = 'r';
+                            outputFile.text[i+3] = 'a';
+                            outputFile.text[i+4] = 'c';
+                            outputFile.text[i+5] = 'k';
+                            outputFile.text[i+6] = 'e';
+                            outputFile.text[i+7] = 'd';
+                            outputFile.text[i+8] = '.';
+                            outputFile.text[i+9] = 't';
+                            outputFile.text[i+10] = 'x';
+                            outputFile.text[i+11] = 't';
+                            i += 12;
+                            outputFile.text[i] = '\0';
+                            outputFile.text[i+1] = '\0';
+                            outputFile.text[i+2] = '\0';
+                            outputFile.size -= 3;
+                            outputFile.textChanged = true;
+                            inputFileFrame = true;
+                        }
+                    }
+                    else if(i>0 && outputFile.text[i+1]=='C' && outputFile.text[i+2]=='r' && outputFile.text[i+3]=='a' && outputFile.text[i+4]=='c' && outputFile.text[i+5]=='k' && outputFile.text[i+6]=='e' && outputFile.text[i+7]=='d' && outputFile.text[i+8]=='.'){
+                        if(operation==Encrypt){
+                            if(outputFile.size<outputFile.capacity-3){
+                                for(int j = outputFile.size+1; outputFile.text[j-2]!='_'; j--) // shift text down to make room for vigenere
+                                    outputFile.text[j] = outputFile.text[j-3];
+                                outputFile.text[i+1] = 'E';
+                                outputFile.text[i+2] = 'n';
+                                outputFile.text[i+3] = 'c';
+                                outputFile.text[i+4] = 'r';
+                                outputFile.text[i+5] = 'y';
+                                outputFile.text[i+6] = 'p';
+                                outputFile.text[i+7] = 't';
+                                outputFile.text[i+8] = 'i';
+                                outputFile.text[i+9] = 'o';
+                                outputFile.text[i+10] = 'n';
+                                outputFile.size += 3;
+                                inputFileFrame = true;
+                            }
+                            else
+                                inputFileFrame = false;
+                            outputFile.textChanged = true;
+                        }
+                        if(operation==Decrypt){
+                            if(outputFile.size<outputFile.capacity-3){
+                                for(int j = outputFile.size+1; outputFile.text[j-2]!='_'; j--) // shift text down to make room for vigenere
+                                    outputFile.text[j] = outputFile.text[j-3];
+                                outputFile.text[i+1] = 'D';
+                                outputFile.text[i+2] = 'e';
+                                outputFile.text[i+3] = 'c';
+                                outputFile.text[i+4] = 'r';
+                                outputFile.text[i+5] = 'y';
+                                outputFile.text[i+6] = 'p';
+                                outputFile.text[i+7] = 't';
+                                outputFile.text[i+8] = 'i';
+                                outputFile.text[i+9] = 'o';
+                                outputFile.text[i+10] = 'n';
+                                outputFile.size += 3;
+                                inputFileFrame = true;
+                            }
+                            else
+                                inputFileFrame = false;
+                            outputFile.textChanged = true;
+                        }
+                    }
+                }
             }
             selWindow = None;
             if(mx>=46 && mx<616 && my>=404 && my<684){ // select input window
@@ -1774,6 +2054,9 @@ int main(void){
                         fclose(inFile);
                         inFile = NULL;
                         ems.AddMessage("Dropped File Successfully Loaded.");
+                        
+                        // tell program not to clear input file because of text update this frame
+                        inputFileFrame = true;
                     }
                     else // new file failed to open, old file path and text is still available
                         ems.AddMessage("Dropped File Could Not Be Loaded.\nPlease Make Sure The File Is Closed Before Trying Again.");
@@ -1930,6 +2213,30 @@ int main(void){
                 output.DisplayText(&outputText);
                 output.DisplayCharLimit(&outputCharLim);
                 output.textChanged = false;
+                if(!inputFileFrame){ // stop taking file input
+                    outputFile.Clear();
+                    outputFile.textChanged = true;
+                    fclose(outFile);
+                    outFile = NULL;
+                    switch(cipher){ // tell the ciphers about this change
+                        case Vigenere:{
+                            vArgs.fileInput = false;
+                            break;
+                        }
+                        case Ceasar:{
+                            //cArgs.fileInput = false;
+                            break;
+                        }
+                        case ZigZag:{
+                            //zArgs.fileInput = false;
+                            break;
+                        }
+                        case Spiral:{
+                            //sArgs.fileInput = false;
+                            break;
+                        }
+                    }
+                }
             }
             if(outputText[0]=='\0' && selWindow!=Output)
                 DrawText("Output...",output.x,output.y,GLOBALFONTSIZE,LIGHTGRAY);
