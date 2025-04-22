@@ -6,12 +6,7 @@
 #include "raylib.h"
 
 /* TO DO:
- * file export is overwritten
-    * imported file is processed
-    * result is automatically exported
-    * user then presses export
-    * exact output text is exported, overwriting output
-    * DISABLE EXPORT BUTTON UNTIL EXPORT WINDOW IS MODIFIED
+ * 
  */
 
 int GLOBALFONTSIZE = 15;
@@ -1440,6 +1435,9 @@ int main(void){
                 exportButton = Pressed;
                 lastPressed = &exportButton;
             }
+            if(exportButton==Disabled && mx>=1152 && mx<1232 && my>=366 && my<404){ // toggle export button
+                ems.AddMessage("Cipher Output Will Be Automatically Exported.\nExport Currently Disabled To Prevent Data Loss.");
+            }
             if(executeButton==Enabled && mx>=1068 && mx<1220 && my>=276 && my<328){ // toggle execute button
                 executeButton = Pressed;
                 lastPressed = &executeButton;
@@ -2057,6 +2055,7 @@ int main(void){
                         
                         // tell program not to clear input file because of text update this frame
                         inputFileFrame = true;
+                        exportButton = Disabled;
                     }
                     else // new file failed to open, old file path and text is still available
                         ems.AddMessage("Dropped File Could Not Be Loaded.\nPlease Make Sure The File Is Closed Before Trying Again.");
@@ -2236,6 +2235,7 @@ int main(void){
                             break;
                         }
                     }
+                    exportButton = Enabled;
                 }
             }
             if(outputText[0]=='\0' && selWindow!=Output)
