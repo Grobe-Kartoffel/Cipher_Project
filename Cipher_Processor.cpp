@@ -1314,7 +1314,7 @@ int main(void){
     const int WIDTH = 1280;
     const int HEIGHT = 720;
     SetConfigFlags(FLAG_MSAA_4X_HINT); // antialiasing
-    InitWindow(WIDTH, HEIGHT, "Vigenere Cipher Processor");
+    InitWindow(WIDTH, HEIGHT, "Universal Cipher Engine");
     SetTargetFPS(60);
     
     // set window icon
